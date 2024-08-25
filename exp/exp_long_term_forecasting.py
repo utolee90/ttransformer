@@ -1,7 +1,7 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.tools import EarlyStopping, adjust_learning_rate, visual
-from utils.metrics import metric
+from utils.metrics import metric, SMAE, REC_CORR, RATIO_IRR
 import torch
 import torch.nn as nn
 from torch import optim
@@ -270,10 +270,11 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             
 
         mae, mse, rmse, mape, mspe = metric(preds, trues)
-        print('mse:{}, mae:{}, dtw:{}'.format(mse, mae, dtw))
+        smae, corr, mae_ratio = SMAE(preds, trues), REC_CORR(preds, trues), RATIO_IRR(preds, trues)
+        print('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}'.format(mse, mae, dtw, smae, corr, mae_ratio))
         f = open("result_long_term_forecast.txt", 'a')
         f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}, dtw:{}'.format(mse, mae, dtw))
+        f.write('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}'.format(mse, mae, dtw, smae, corr, mae_ratio))
         f.write('\n')
         f.write('\n')
         f.close()
