@@ -9,6 +9,8 @@ from exp.exp_classification import Exp_Classification
 from utils.print_args import print_args
 import random
 import numpy as np
+from decimal import Decimal
+import time
 
 if __name__ == '__main__':
     fix_seed = 2021
@@ -36,6 +38,14 @@ if __name__ == '__main__':
     parser.add_argument('--freq', type=str, default='h',
                         help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
+    
+    # added option 
+    # parser.add_argument('--train_ratio', type=float, default=0.7, help='train data ratio')
+    # parser.add_argument('--test_ratio', type=float, default=0.2, help='test data ratio')
+    # parser.add_argument('--train_step', type=float, default=1.0, help='train data with certain stes. for example train_step=2 means only train even number of data')
+
+    # SparseTSF
+    parser.add_argument('--period_len', type=int, default=24, help='period length')
 
     # forecasting task
     parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
@@ -159,6 +169,8 @@ if __name__ == '__main__':
         Exp = Exp_Classification
     else:
         Exp = Exp_Long_Term_Forecast
+    
+    timestamp = int(time.time())
 
     if args.is_training:
         for ii in range(args.itr):
@@ -184,6 +196,10 @@ if __name__ == '__main__':
                 args.embed,
                 args.distil,
                 args.des, ii)
+            
+            #setting이 너무 길어지므로 model_id + model + timestamp만 남기고 대신 argment를 text에 저장
+            with open('exp_arguments_store.txt', 'a', encoding='utf8') as X:
+                X.write(str(timestamp) + " :::" + str(args) + '\n')
 
             print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
             exp.train(setting)
@@ -213,6 +229,10 @@ if __name__ == '__main__':
             args.embed,
             args.distil,
             args.des, ii)
+        
+        #setting이 너무 길어지므로 model_id + model + timestamp만 남기고 대신 argment를 text에 저장
+        with open('exp_arguments_store.txt', 'a', encoding='utf8') as X:
+            X.write(str(timestamp) + " :::" + str(args) + '\n')
 
         exp = Exp(args)  # set experiments
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
