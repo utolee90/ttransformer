@@ -165,6 +165,8 @@ result_anomaly_detection.txt
 scripts/augmentation/
 run_anylearn.py
 environment.txt
+logs/
 
 # result
 exp_argument_store.txt
+aux_*.png

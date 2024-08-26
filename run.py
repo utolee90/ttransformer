@@ -4,6 +4,7 @@ import torch
 from exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
 from exp.exp_imputation import Exp_Imputation
 from exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
+from exp.exp_long_term_forecasting_partial import Exp_Long_Term_Forecast_Partial
 from exp.exp_anomaly_detection import Exp_Anomaly_Detection
 from exp.exp_classification import Exp_Classification
 from utils.print_args import print_args
@@ -40,12 +41,26 @@ if __name__ == '__main__':
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
     
     # added option 
-    # parser.add_argument('--train_ratio', type=float, default=0.7, help='train data ratio')
-    # parser.add_argument('--test_ratio', type=float, default=0.2, help='test data ratio')
-    # parser.add_argument('--train_step', type=float, default=1.0, help='train data with certain stes. for example train_step=2 means only train even number of data')
+    parser.add_argument('--train_ratio', type=float, default=0.7, help='train data ratio')
+    parser.add_argument('--test_ratio', type=float, default=0.2, help='test data ratio')
+    parser.add_argument('--train_step', type=float, default=1.0, help='train data with certain stes. for example train_step=2 means only train even number of data')
 
     # SparseTSF
     parser.add_argument('--period_len', type=int, default=24, help='period length')
+
+    # PITS
+    parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
+    parser.add_argument('--head_dropout', type=float, default=0.0, help='head dropout')
+    parser.add_argument('--patch_len', type=int, default=16, help='patch length')
+    parser.add_argument('--stride', type=int, default=8, help='stride')
+    parser.add_argument('--shared_embedding', type=int, default=1, help='stride')
+    parser.add_argument('--padding_patch', default='end', help='None: None; end: padding on the end')
+    parser.add_argument('--revin', type=int, default=1, help='RevIN; True 1 False 0')
+    parser.add_argument('--affine', type=int, default=0, help='RevIN-affine; True 1 False 0')
+    parser.add_argument('--subtract_last', type=int, default=0, help='0: subtract mean; 1: subtract last')
+    parser.add_argument('--decomposition', type=int, default=0, help='decomposition; True 1 False 0')
+    parser.add_argument('--kernel_size', type=int, default=25, help='decomposition-kernel')
+    parser.add_argument('--individual', type=int, default=0, help='individual head; True 1 False 0')
 
     # forecasting task
     parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
@@ -167,6 +182,8 @@ if __name__ == '__main__':
         Exp = Exp_Anomaly_Detection
     elif args.task_name == 'classification':
         Exp = Exp_Classification
+    elif args.task_name == 'long_term_forecast_partial':
+        Exp = Exp_Long_Term_Forecast_Partial
     else:
         Exp = Exp_Long_Term_Forecast
     
@@ -176,7 +193,7 @@ if __name__ == '__main__':
         for ii in range(args.itr):
             # setting record of experiments
             exp = Exp(args)  # set experiments
-            setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}'.format(
+            setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}({})'.format(
                 args.task_name,
                 args.model_id,
                 args.model,
@@ -195,7 +212,7 @@ if __name__ == '__main__':
                 args.factor,
                 args.embed,
                 args.distil,
-                args.des, ii)
+                args.des, ii, timestamp)
             
             #setting이 너무 길어지므로 model_id + model + timestamp만 남기고 대신 argment를 text에 저장
             with open('exp_arguments_store.txt', 'a', encoding='utf8') as X:
@@ -209,7 +226,7 @@ if __name__ == '__main__':
             torch.cuda.empty_cache()
     else:
         ii = 0
-        setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}'.format(
+        setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}({})'.format(
             args.task_name,
             args.model_id,
             args.model,
@@ -228,7 +245,7 @@ if __name__ == '__main__':
             args.factor,
             args.embed,
             args.distil,
-            args.des, ii)
+            args.des, ii, timestamp)
         
         #setting이 너무 길어지므로 model_id + model + timestamp만 남기고 대신 argment를 text에 저장
         with open('exp_arguments_store.txt', 'a', encoding='utf8') as X:

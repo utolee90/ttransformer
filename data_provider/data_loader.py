@@ -19,7 +19,7 @@ warnings.filterwarnings('ignore')
 class Dataset_ETT_hour(Dataset):
     def __init__(self, args, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None):
+                 target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, train_ratio=0.7, test_ratio=0.2):
         # size [seq_len, label_len, pred_len]
         self.args = args
         # info
@@ -112,7 +112,7 @@ class Dataset_ETT_hour(Dataset):
 class Dataset_ETT_minute(Dataset):
     def __init__(self, args, root_path, flag='train', size=None,
                  features='S', data_path='ETTm1.csv',
-                 target='OT', scale=True, timeenc=0, freq='t', seasonal_patterns=None):
+                 target='OT', scale=True, timeenc=0, freq='t', seasonal_patterns=None, train_ratio=0.7, test_ratio=0.2):
         # size [seq_len, label_len, pred_len]
         self.args = args
         # info
@@ -204,10 +204,84 @@ class Dataset_ETT_minute(Dataset):
         return self.scaler.inverse_transform(data)
 
 
+class Dataset_PEMS(Dataset):
+    def __init__(self, root_path, flag='train', size=None,
+                 features='S', data_path='ETTh1.csv',
+                 target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None,
+                 train_ratio=0.6, test_ratio=0.2 ) :
+        # size [seq_len, label_len, pred_len]
+        # info
+        self.seq_len = size[0]
+        self.label_len = size[1]
+        self.pred_len = size[2]
+        # init
+        assert flag in ['train', 'test', 'val']
+        type_map = {'train': 0, 'val': 1, 'test': 2}
+        self.set_type = type_map[flag]
+
+        self.features = features
+        self.target = target
+        self.scale = scale
+        self.timeenc = timeenc
+        self.freq = freq
+
+        self.train_ratio = train_ratio
+        self.test_ratio = test_ratio
+
+        self.root_path = root_path
+        self.data_path = data_path
+        self.__read_data__()
+
+    def __read_data__(self):
+        self.scaler = StandardScaler()
+        data_file = os.path.join(self.root_path, self.data_path)
+        data = np.load(data_file, allow_pickle=True)
+        data = data['data'][:, :, 0]
+
+        train_ratio = self.train_ratio
+        valid_ratio = 1 - self.train_ratio - self.test_ratio
+        train_data = data[:int(train_ratio * len(data))]
+        valid_data = data[int(train_ratio * len(data)): int((train_ratio + valid_ratio) * len(data))]
+        test_data = data[int((train_ratio + valid_ratio) * len(data)):]
+        total_data = [train_data, valid_data, test_data]
+        data = total_data[self.set_type]
+
+        if self.scale:
+            self.scaler.fit(train_data)
+            data = self.scaler.transform(data)
+            # data += 10 # 알괄적으로 양수로 만들기 위해 작업.
+
+        df = pd.DataFrame(data)
+        df = df.fillna(method='ffill', limit=len(df)).fillna(method='bfill', limit=len(df)).values
+
+        self.data_x = df
+        self.data_y = df
+
+    def __getitem__(self, index):
+        s_begin = index
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len
+        r_end = r_begin + self.label_len + self.pred_len
+
+        seq_x = self.data_x[s_begin:s_end]
+        seq_y = self.data_y[r_begin:r_end]
+        seq_x_mark = torch.zeros((seq_x.shape[0], 1))
+        seq_y_mark = torch.zeros((seq_x.shape[0], 1))
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+
+    def __len__(self):
+        return len(self.data_x) - self.seq_len - self.pred_len + 1
+
+    def inverse_transform(self, data):
+        return self.scaler.inverse_transform(data)
+
+
+
 class Dataset_Custom(Dataset):
     def __init__(self, args, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None):
+                 target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None,  train_ratio=0.7, test_ratio=0.2):
         # size [seq_len, label_len, pred_len]
         self.args = args
         # info
@@ -230,6 +304,9 @@ class Dataset_Custom(Dataset):
         self.timeenc = timeenc
         self.freq = freq
 
+        self.train_ratio = train_ratio
+        self.test_ratio = test_ratio
+
         self.root_path = root_path
         self.data_path = data_path
         self.__read_data__()
@@ -246,11 +323,12 @@ class Dataset_Custom(Dataset):
         cols.remove(self.target)
         cols.remove('date')
         df_raw = df_raw[['date'] + cols + [self.target]]
-        num_train = int(len(df_raw) * 0.7)
-        num_test = int(len(df_raw) * 0.2)
-        num_vali = len(df_raw) - num_train - num_test
-        border1s = [0, num_train - self.seq_len, len(df_raw) - num_test - self.seq_len]
-        border2s = [num_train, num_train + num_vali, len(df_raw)]
+        num_total = len(df_raw)
+        num_train = int(num_total * self.train_ratio)
+        num_test = int(num_total * self.test_ratio)
+        num_vali = num_total - num_train - num_test
+        border1s = [0, num_train - self.seq_len, num_total - num_test - self.seq_len]
+        border2s = [num_train, num_train + num_vali, num_total]
         border1 = border1s[self.set_type]
         border2 = border2s[self.set_type]
 
@@ -306,12 +384,100 @@ class Dataset_Custom(Dataset):
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
 
+class Dataset_Solar(Dataset):
+    def __init__(self, args, root_path, flag='train', size=None,
+                 features='S', data_path='ETTh1.csv',
+                 target='OT', scale=True, timeenc=0, freq='h',
+                 seasonal_patterns=None, train_ratio=0.7, test_ratio=0.2):
+        # size [seq_len, label_len, pred_len]
+        # info
+        self.seq_len = size[0]
+        self.label_len = size[1]
+        self.pred_len = size[2]
+        # init
+        assert flag in ['train', 'test', 'val']
+        type_map = {'train': 0, 'val': 1, 'test': 2}
+        self.set_type = type_map[flag]
+
+        self.features = features
+        self.target = target
+        self.scale = scale
+        self.timeenc = timeenc
+        self.freq = freq
+        self.train_ratio = train_ratio
+        self.test_ratio = test_ratio
+
+        self.root_path = root_path
+        self.data_path = data_path
+        self.__read_data__()
+
+    def __read_data__(self):
+        self.scaler = StandardScaler()
+        df_raw = []
+        with open(os.path.join(self.root_path, self.data_path), "r", encoding='utf-8') as f:
+            for line in f.readlines():
+                line = line.strip('\n').split(',')
+                data_line = np.stack([float(i) for i in line])
+                df_raw.append(data_line)
+        df_raw = np.stack(df_raw, 0)
+        df_raw = pd.DataFrame(df_raw)
+
+        num_total = len(df_raw)
+        num_train = int(len(df_raw) * self.train_ratio)
+        num_test = int(len(df_raw) * self.test_ratio)
+        num_val = num_total - num_train - num_test
+        border1s = [0, num_train - self.seq_len, len(df_raw) - num_test - self.seq_len]
+        border2s = [num_train, num_train + num_val, len(df_raw)]
+        border1 = border1s[self.set_type]
+        border2 = border2s[self.set_type]
+
+        data_indices_obj = { 
+            k: list(range(border1s[k], border2s[k])) for k in range(3)
+        }
+
+
+        df_data = df_raw.values
+
+        train_indices = data_indices_obj[0]
+
+        # 스케일링
+        if self.scale:
+            train_data = df_data[train_indices]
+            self.scaler.fit(train_data)
+            data = self.scaler.transform(df_data)
+            # data += 10 # 알괄적으로 양수로 만들기 위해 작업.
+        else:
+            data = df_data
+        
+
+        self.data_x = data[data_indices_obj[self.set_type]] 
+        self.data_y = data[data_indices_obj[self.set_type]] 
+
+    def __getitem__(self, index):
+        s_begin = index
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len
+        r_end = r_begin + self.label_len + self.pred_len
+
+        seq_x = self.data_x[s_begin:s_end]
+        seq_y = self.data_y[r_begin:r_end]
+        seq_x_mark = torch.zeros((seq_x.shape[0], 1))
+        seq_y_mark = torch.zeros((seq_x.shape[0], 1))
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+
+    def __len__(self):
+        return len(self.data_x) - self.seq_len - self.pred_len + 1
+
+    def inverse_transform(self, data):
+        return self.scaler.inverse_transform(data)
+
 
 class Dataset_M4(Dataset):
     def __init__(self, args, root_path, flag='pred', size=None,
                  features='S', data_path='ETTh1.csv',
                  target='OT', scale=False, inverse=False, timeenc=0, freq='15min',
-                 seasonal_patterns='Yearly'):
+                 seasonal_patterns='Yearly', train_ratio=0.7, test_ratio=0.2):
         # size [seq_len, label_len, pred_len]
         # init
         self.features = features

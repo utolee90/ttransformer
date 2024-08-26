@@ -122,12 +122,15 @@ class Exp_Long_Term_Forecast_Partial(Exp_Basic):
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
 
-        train_len = len(train_data)
-        selected_indices = [int(i* self.args.train_step) for i in range(int(train_len/self.args.train_step)+1) if i* self.args.train_step<= train_len ]
-        print(train_len, len(selected_indices))
-
         if self.args.use_amp:
             scaler = torch.cuda.amp.GradScaler()
+        
+        train_len = len(train_data)
+
+        if self.args.train_step >=1.0:
+            selected_indices = [int(i* self.args.train_step) for i in range(int(train_len/self.args.train_step)+1) if i* self.args.train_step<= train_len ]
+        else:
+            selected_indices = list(range(train_len))
 
         for epoch in range(self.args.train_epochs):
             iter_count = 0
@@ -354,9 +357,9 @@ class Exp_Long_Term_Forecast_Partial(Exp_Basic):
         mae, mse, rmse, mape, mspe = metric(preds, trues)
         corr = REC_CORR(preds, trues)
         smae = SMAE(preds, trues)
-        tt_mae_ration = RATIO_IRR(preds, trues, 3)
+        mae_ratio = RATIO_IRR(preds, trues, 3)
 
-        write_msg = 'mse:{}, mae:{}, smae:{}, irr_ratio(3):{}, corr:{}'.format(mse, mae, smae, tt_mae_ration, corr)
+        write_msg = 'mse:{}, mae:{}, smae:{}, irr_ratio(3):{}, corr:{}'.format(mse, mae, smae, mae_ratio, corr)
         print(write_msg)
         f = open("result_long_term_forecast.txt", 'a')
         f.write(setting + "  \n")
@@ -365,7 +368,7 @@ class Exp_Long_Term_Forecast_Partial(Exp_Basic):
         f.write('\n')
         f.close()
 
-        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, corr, smae, tt_mae_ration]))
+        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, smae, mae_ratio, corr]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
 

@@ -1,5 +1,5 @@
 from data_provider.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_M4, PSMSegLoader, \
-    MSLSegLoader, SMAPSegLoader, SMDSegLoader, SWATSegLoader, UEAloader
+    MSLSegLoader, SMAPSegLoader, SMDSegLoader, SWATSegLoader, UEAloader, Dataset_Solar, Dataset_PEMS
 from data_provider.uea import collate_fn
 from torch.utils.data import DataLoader
 
@@ -10,6 +10,8 @@ data_dict = {
     'ETTm2': Dataset_ETT_minute,
     'custom': Dataset_Custom,
     'm4': Dataset_M4,
+    'Solar': Dataset_Solar,
+    'PEMS': Dataset_PEMS,
     'PSM': PSMSegLoader,
     'MSL': MSLSegLoader,
     'SMAP': SMAPSegLoader,
@@ -74,7 +76,9 @@ def data_provider(args, flag):
             target=args.target,
             timeenc=timeenc,
             freq=freq,
-            seasonal_patterns=args.seasonal_patterns
+            seasonal_patterns=args.seasonal_patterns,
+            train_ratio=args.train_ratio,
+            test_ratio=args.test_ratio
         )
         print(flag, len(data_set))
         data_loader = DataLoader(
