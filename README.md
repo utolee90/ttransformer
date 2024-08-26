@@ -1,30 +1,7 @@
-# Time Series Library (TSLib)
-TSLib is an open-source library for deep learning researchers, especially for deep time series analysis.
+# PiFormer 
+PiFormer is a Time Series Forecasting method
 
-We provide a neat code base to evaluate advanced deep time series models or develop your model, which covers five mainstream tasks: **long- and short-term forecasting, imputation, anomaly detection, and classification.**
-
-:triangular_flag_on_post:**News** (2024.07) We wrote a comprehensive survey of [[Deep Time Series Models]](https://arxiv.org/abs/2407.13278) with a rigorous benchmark based on TSLib. In this paper, we summarized the design principles of current time series models supported by insightful experiments, hoping to be helpful to future research.
-
-:triangular_flag_on_post:**News** (2024.04) Many thanks for the great work from [frecklebars](https://github.com/thuml/Time-Series-Library/pull/378). The famous sequential model [Mamba](https://arxiv.org/abs/2312.00752) has been included in our library. See [this file](https://github.com/thuml/Time-Series-Library/blob/main/models/Mamba.py), where you need to install `mamba_ssm` with pip at first.
-
-:triangular_flag_on_post:**News** (2024.03) Given the inconsistent look-back length of various papers, we split the long-term forecasting in the leaderboard into two categories: Look-Back-96 and Look-Back-Searching. We recommend researchers read [TimeMixer](https://openreview.net/pdf?id=7oLshfEIC2), which includes both look-back length settings in experiments for scientific rigor.
-
-:triangular_flag_on_post:**News** (2023.10) We add an implementation to [iTransformer](https://arxiv.org/abs/2310.06625), which is the state-of-the-art model for long-term forecasting. The official code and complete scripts of iTransformer can be found [here](https://github.com/thuml/iTransformer).
-
-:triangular_flag_on_post:**News** (2023.09) We added a detailed [tutorial](https://github.com/thuml/Time-Series-Library/blob/main/tutorial/TimesNet_tutorial.ipynb) for [TimesNet](https://openreview.net/pdf?id=ju_Uqw384Oq) and this library, which is quite friendly to beginners of deep time series analysis.
-
-:triangular_flag_on_post:**News** (2023.02) We release the TSlib as a comprehensive benchmark and code base for time series models, which is extended from our previous GitHub repository [Autoformer](https://github.com/thuml/Autoformer).
-
-## Leaderboard for Time Series Analysis
-
-Till March 2024, the top three models for five different tasks are:
-
-| Model<br>Ranking | Long-term<br>Forecasting<br>Look-Back-96              | Long-term<br/>Forecasting<br/>Look-Back-Searching     | Short-term<br>Forecasting                                    | Imputation                                                   | Classification                                               | Anomaly<br>Detection                               |
-| ---------------- | ----------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------- |
-| 🥇 1st            | [iTransformer](https://arxiv.org/abs/2310.06625)      | [TimeMixer](https://openreview.net/pdf?id=7oLshfEIC2) | [TimesNet](https://arxiv.org/abs/2210.02186)                 | [TimesNet](https://arxiv.org/abs/2210.02186)                 | [TimesNet](https://arxiv.org/abs/2210.02186)                 | [TimesNet](https://arxiv.org/abs/2210.02186)       |
-| 🥈 2nd            | [TimeMixer](https://openreview.net/pdf?id=7oLshfEIC2) | [PatchTST](https://github.com/yuqinie98/PatchTST)     | [Non-stationary<br/>Transformer](https://github.com/thuml/Nonstationary_Transformers) | [Non-stationary<br/>Transformer](https://github.com/thuml/Nonstationary_Transformers) | [Non-stationary<br/>Transformer](https://github.com/thuml/Nonstationary_Transformers) | [FEDformer](https://github.com/MAZiqing/FEDformer) |
-| 🥉 3rd            | [TimesNet](https://arxiv.org/abs/2210.02186)          | [DLinear](https://arxiv.org/pdf/2205.13504.pdf)       | [FEDformer](https://github.com/MAZiqing/FEDformer)           | [Autoformer](https://github.com/thuml/Autoformer)            | [Informer](https://github.com/zhouhaoyi/Informer2020)        | [Autoformer](https://github.com/thuml/Autoformer)  |
-
+## Other Models
 
 **Note: We will keep updating this leaderboard.** If you have proposed advanced and awesome models, you can send us your paper/code link or raise a pull request. We will add them to this repo and update the leaderboard as soon as possible.
 
@@ -95,45 +72,37 @@ bash ./scripts/classification/TimesNet.sh
 
 Note: The original code for the classification task can be found [here](https://github.com/thuml/Flowformer/tree/main/Flowformer_TimeSeries). It is hard to fuse all five tasks in one library. We are still working on this task.
 
+5. Use 
+
 ## Citation
 
 If you find this repo useful, please cite our paper.
 
 ```
-@inproceedings{wu2023timesnet,
+@inproceedings{utolee90,
   title={TimesNet: Temporal 2D-Variation Modeling for General Time Series Analysis},
-  author={Haixu Wu and Tengge Hu and Yong Liu and Hang Zhou and Jianmin Wang and Mingsheng Long},
+  author={Yohan Lee, Sanghak Park, Seyeon Park, Daeun Ji and Beakcheol Jang},
   booktitle={International Conference on Learning Representations},
-  year={2023},
-}
-
-@article{wang2024tssurvey,
-  title={Deep Time Series Models: A Comprehensive Survey and Benchmark},
-  author={Yuxuan Wang and Haixu Wu and Jiaxiang Dong and Yong Liu and Mingsheng Long and Jianmin Wang},
-  booktitle={arXiv preprint arXiv:2407.13278},
   year={2024},
 }
+
 ```
 
 ## Contact
 If you have any questions or suggestions, feel free to contact our maintenance team:
 
 Current:
-- Haixu Wu (Ph.D. student, wuhx23@mails.tsinghua.edu.cn)
-- Yong Liu (Ph.D. student, liuyong21@mails.tsinghua.edu.cn)
-- Yuxuan Wang (Ph.D. student, wangyuxu22@mails.tsinghua.edu.cn)
-- Huikun Weng (Undergraduate, wenghk22@mails.tsinghua.edu.cn)
+- Yohan Lee (Ph.D. student, utipiamath@yonsei.ac.kr)
+- Sanghak Park (Master student, sean7067@yonsei.ac.kr)
+- Seyeon Park (Master student, seyeon@yonsei.ac.kr)
+- Daeun Ji (Master student, daeun09@yonsei.ac.kr)
 
-Previous:
-- Tengge Hu (Master student, htg21@mails.tsinghua.edu.cn)
-- Haoran Zhang (Master student, z-hr20@mails.tsinghua.edu.cn)
-- Jiawei Guo (Undergraduate, guo-jw21@mails.tsinghua.edu.cn)
 
 Or describe it in Issues.
 
 ## Acknowledgement
 
-This project is supported by the National Key R&D Program of China (2021YFB1715200).
+This project is supported by Korean National Research Foundation.
 
 This library is constructed based on the following repos:
 
@@ -153,8 +122,3 @@ All the experiment datasets are public, and we obtain them from the following li
 
 - Classification: https://www.timeseriesclassification.com/.
 
-## All Thanks To Our Contributors
-
-<a href="https://github.com/thuml/Time-Series-Library/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=thuml/Time-Series-Library" />
-</a>

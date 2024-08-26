@@ -77,6 +77,13 @@ class Exp_Anomaly_Detection(Exp_Basic):
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
 
+        train_len = len(train_data)
+
+        if self.args.train_step >=1.0:
+            selected_indices = [int(i* self.args.train_step) for i in range(int(train_len/self.args.train_step)+1) if i* self.args.train_step<= train_len ]
+        else:
+            selected_indices = list(range(train_len))
+
         for epoch in range(self.args.train_epochs):
             iter_count = 0
             train_loss = []
@@ -84,28 +91,30 @@ class Exp_Anomaly_Detection(Exp_Basic):
             self.model.train()
             epoch_time = time.time()
             for i, (batch_x, batch_y) in enumerate(train_loader):
-                iter_count += 1
-                model_optim.zero_grad()
+                if i in selected_indices:
+                    iter_count += 1
+                    model_optim.zero_grad()
 
-                batch_x = batch_x.float().to(self.device)
+                    batch_x = batch_x.float().to(self.device)
 
-                outputs = self.model(batch_x, None, None, None)
+                    outputs = self.model(batch_x, None, None, None)
 
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, :, f_dim:]
-                loss = criterion(outputs, batch_x)
-                train_loss.append(loss.item())
+                    f_dim = -1 if self.args.features == 'MS' else 0
+                    outputs = outputs[:, :, f_dim:]
+                    loss = criterion(outputs, batch_x)
+                    train_loss.append(loss.item())
 
-                if (i + 1) % 100 == 0:
-                    print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
-                    speed = (time.time() - time_now) / iter_count
-                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
-                    iter_count = 0
-                    time_now = time.time()
+                    if (i + 1) % 100 == 0:
+                        done_len, remain_len = len(list(filter(lambda x: x<=i, selected_indices))), len(list(filter(lambda x: x>i, selected_indices)))
+                        print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(done_len, epoch + 1, loss.item()))
+                        speed = (time.time() - time_now) / iter_count
+                        left_time = speed * ((self.args.train_epochs - epoch) * remain_len)
+                        print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
+                        iter_count = 0
+                        time_now = time.time()
 
-                loss.backward()
-                model_optim.step()
+                    loss.backward()
+                    model_optim.step()
 
             print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
             train_loss = np.average(train_loss)
