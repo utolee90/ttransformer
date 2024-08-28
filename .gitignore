@@ -168,5 +168,5 @@ environment.txt
 logs/
 
 # result
-exp_argument_store.txt
 aux_*.png
+exp_arguments_store.txt
