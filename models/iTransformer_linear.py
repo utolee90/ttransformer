@@ -5,6 +5,7 @@ from layers.Transformer_EncDec import Encoder, EncoderLayer
 from layers.SelfAttention_Family import FullAttention, AttentionLayer
 from layers.Embed import DataEmbedding_inverted
 import numpy as np
+from sklearn.linear_model import LinearRegression
 
 
 class Model(nn.Module):
@@ -37,7 +38,7 @@ class Model(nn.Module):
             norm_layer=torch.nn.LayerNorm(configs.d_model)
         )
         # Decoder
-        if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
+        if self.task_name in ['long_term_forecast', 'short_term_forecast', 'long_term_forecast_partial']:
             self.projection = nn.Linear(configs.d_model, configs.pred_len, bias=True)
         if self.task_name == 'imputation':
             self.projection = nn.Linear(configs.d_model, configs.seq_len, bias=True)
@@ -56,6 +57,9 @@ class Model(nn.Module):
         x_enc /= stdev
 
         _, _, N = x_enc.shape
+
+        # linear_coef
+        
 
         # Embedding
         enc_out = self.enc_embedding(x_enc, x_mark_enc)

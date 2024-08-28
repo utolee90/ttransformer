@@ -62,6 +62,9 @@ if __name__ == '__main__':
     parser.add_argument('--kernel_size', type=int, default=25, help='decomposition-kernel')
     parser.add_argument('--individual', type=int, default=0, help='individual head; True 1 False 0')
 
+    # Piformer
+    parser.add_argument('--joint_var', type=int, default=0, help='use attention for each patching; True 1 False 0')
+
     # forecasting task
     parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
     parser.add_argument('--label_len', type=int, default=48, help='start token length')
