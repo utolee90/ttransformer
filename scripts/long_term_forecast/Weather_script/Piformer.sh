@@ -7,7 +7,7 @@ python -u run.py \
   --is_training 1 \
   --root_path ./dataset/weather/ \
   --data_path weather.csv \
-  --model_id weather_96_96 \
+  --model_id weather_96_96_2 \
   --model $model_name \
   --data custom \
   --features M \
@@ -26,4 +26,4 @@ python -u run.py \
   --batch_size 16 \
   --learning_rate 0.001 \
   --itr 1 \
-  --period_len 4
+  --period_len 16
