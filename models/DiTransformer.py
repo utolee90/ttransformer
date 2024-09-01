@@ -5,7 +5,7 @@ from layers.Transformer_EncDec import Encoder, EncoderLayer
 from layers.SelfAttention_Family import FullAttention, AttentionLayer
 from layers.Embed import DataEmbedding_inverted
 import numpy as np
-from sklearn.linear_model import LinearRegression
+from layers.Autoformer_EncDec import series_decomp
 
 
 class Model(nn.Module):
@@ -19,6 +19,10 @@ class Model(nn.Module):
         self.seq_len = configs.seq_len
         self.pred_len = configs.pred_len
         self.output_attention = configs.output_attention
+        
+        # Series decomposition block from Autoformer
+        self.decomposition = series_decomp(configs.moving_avg)
+
         # Embedding
         self.enc_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, configs.embed, configs.freq,
                                                     configs.dropout)
@@ -38,7 +42,7 @@ class Model(nn.Module):
             norm_layer=torch.nn.LayerNorm(configs.d_model)
         )
         # Decoder
-        if self.task_name in ['long_term_forecast', 'short_term_forecast', 'long_term_forecast_partial']:
+        if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
             self.projection = nn.Linear(configs.d_model, configs.pred_len, bias=True)
         if self.task_name == 'imputation':
             self.projection = nn.Linear(configs.d_model, configs.seq_len, bias=True)
@@ -50,25 +54,38 @@ class Model(nn.Module):
             self.projection = nn.Linear(configs.d_model * configs.enc_in, configs.num_class)
 
     def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
-        # Normalization from Non-stationary Transformer
-        means = x_enc.mean(1, keepdim=True).detach()
-        x_enc = x_enc - means
-        stdev = torch.sqrt(torch.var(x_enc, dim=1, keepdim=True, unbiased=False) + 1e-5)
-        x_enc /= stdev
+
+        # Decomposition
+        s_enc, t_enc = self.decomposition(x_enc)
 
         _, _, N = x_enc.shape
 
-        # linear_coef
-        
+        # Normalization from Non-stationary Transformer - s, t
+        s_means = s_enc.mean(1, keepdim=True).detach()
+        s_enc = s_enc - s_means
+        s_stdev = torch.sqrt(torch.var(s_enc, dim=1, keepdim=True, unbiased=False) + 1e-5)
+        s_enc /= s_stdev
+
+        t_means = t_enc.mean(1, keepdim=True).detach()
+        t_enc = t_enc - t_means
+        t_stdev = torch.sqrt(torch.var(t_enc, dim=1, keepdim=True, unbiased=False) + 1e-5)
+        t_enc /= t_stdev
 
         # Embedding
-        enc_out = self.enc_embedding(x_enc, x_mark_enc)
-        enc_out, attns = self.encoder(enc_out, attn_mask=None)
+        s_enc_out = self.enc_embedding(s_enc, x_mark_enc)
+        s_enc_out, s_attns = self.encoder(s_enc_out, attn_mask=None)
+        t_enc_out = self.enc_embedding(t_enc, x_mark_enc)
+        t_enc_out, t_attns = self.encoder(t_enc_out, attn_mask=None)
 
-        dec_out = self.projection(enc_out).permute(0, 2, 1)[:, :, :N]
+        s_dec_out = self.projection(s_enc_out).permute(0, 2, 1)[:, :, :N]
+        t_dec_out = self.projection(t_enc_out).permute(0, 2, 1)[:, :, :N]
         # De-Normalization from Non-stationary Transformer
-        dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
-        dec_out = dec_out + (means[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
+        s_dec_out = s_dec_out * (s_stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
+        s_dec_out = s_dec_out + (s_means[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
+        t_dec_out = t_dec_out * (t_stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
+        t_dec_out = t_dec_out + (t_means[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
+        dec_out = s_dec_out + t_dec_out
+
         return dec_out
 
     def imputation(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask):
@@ -124,7 +141,7 @@ class Model(nn.Module):
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
         if self.task_name in ['long_term_forecast', 'short_term_forecast', 'long_term_forecast_partial']:
             dec_out = self.forecast(x_enc, x_mark_enc, x_dec, x_mark_dec)
-            return dec_out[:, -self.pred_len:, :]  # [B, L, D]
+            return dec_out[:, -self.pred_len:, :] # [B, L, D]
         if self.task_name == 'imputation':
             dec_out = self.imputation(x_enc, x_mark_enc, x_dec, x_mark_dec, mask)
             return dec_out  # [B, L, D]

@@ -205,7 +205,7 @@ class Dataset_ETT_minute(Dataset):
 
 
 class Dataset_PEMS(Dataset):
-    def __init__(self, root_path, flag='train', size=None,
+    def __init__(self, args, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
                  target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None,
                  train_ratio=0.6, test_ratio=0.2 ) :
