@@ -170,3 +170,5 @@ logs/
 # result
 aux_*.png
 exp_arguments_store.txt
+dataset.zip
+*.npy
