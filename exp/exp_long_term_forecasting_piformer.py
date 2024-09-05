@@ -12,23 +12,45 @@ import numpy as np
 from utils.dtw_metric import dtw,accelerated_dtw
 from utils.augmentation import run_augmentation,run_augmentation_single
 import json
+from exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
+from models import Piformer
+import copy
 
 warnings.filterwarnings('ignore')
 
-
-class Exp_Long_Term_Forecast(Exp_Basic):
+torch.autograd.set_detect_anomaly(True)
+class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
     def __init__(self, args):
-        super(Exp_Long_Term_Forecast, self).__init__(args)
+        super(Exp_Long_Term_Forecast_Piformer, self).__init__(args)
+        self.base_model = self._build_base_model()
+
+    def _build_base_model(self):
+        base_args = copy.deepcopy(self.args)
+        base_args.model = self.args.base_model # base_model 파라미터를 이용해서 model 정의
+        base_args.seq_len = self.args.period_len 
+        base_args.label_len = self.args.period_len // 2
+        base_args.pred_len = self.args.period_len
+        base_args.shuffle = 0
+        base_model = Exp_Long_Term_Forecast(base_args)
+        base_model._build_model()
+
+        if self.args.use_multi_gpu and self.args.use_gpu:
+            base_model = nn.DataParallel(base_model, device_ids=self.args.device_ids)
+        
+        base_model.model.eval() # evaluation 모드만 사용
+        self.base_model = base_model
+        
+        return base_model
 
     def _build_model(self):
-        model = self.model_dict[self.args.model].Model(self.args).float()
-        self.coeff_vectors = torch.ones(1) # 편의상 아무 torch로 정의 
-        self.train_data_count = 0 # 훈련 횟수
-
+        model = Piformer.Model(self.args).float()
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
             
         return model
+        
+    def _get_base_data(self, flag):
+        return self._build_base_model()._get_data()
 
     def _get_data(self, flag):
         data_set, data_loader = data_provider(self.args, flag)
@@ -42,10 +64,10 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         criterion = nn.MSELoss()
         return criterion
 
-    def vali(self, vali_data, vali_loader, criterion):
+    def vali(self, vali_data, vali_loader, criterion, coeff_vector=np.array([1, 0])):
         total_loss = []
         self.model.eval()
-        coeff_vectors = self.coeff_vectors # vector 값 불러오기
+        base_model = self.base_model.model
 
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
@@ -61,21 +83,11 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
-                            outputs = self.model(batch_x)
-                        else:
-                            if self.args.output_attention:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                            else:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, base_model)
+
                 else:
-                    if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
-                        outputs = self.model(batch_x)
-                    else:
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, base_model)
+
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
@@ -91,9 +103,12 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         return total_loss
 
     def train(self, setting):
+
         train_data, train_loader = self._get_data(flag='train')
         vali_data, vali_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
+        
+        base_model = self.base_model.model
 
         path = os.path.join(self.args.checkpoints, setting)
         if not os.path.exists(path):
@@ -111,7 +126,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             scaler = torch.cuda.amp.GradScaler()
 
         train_len = len(train_data)
-
+        
         if self.args.train_step >=1.0:
             selected_indices = [int(i* self.args.train_step) for i in range(int(train_len/self.args.train_step)+1) if i* self.args.train_step<= train_len ]
         else:
@@ -140,13 +155,8 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                     # encoder - decoder
                     if self.args.use_amp:
                         with torch.cuda.amp.autocast():
-                            if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
-                                outputs = self.model(batch_x)
-                            else:
-                                if self.args.output_attention:
-                                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                                else:
-                                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+
+                            outputs = self.model(batch_x, batch_x_mark, batch_y, batch_y_mark, base_model)
 
                             f_dim = -1 if self.args.features == 'MS' else 0
                             outputs = outputs[:, -self.args.pred_len:, f_dim:]
@@ -154,14 +164,8 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                             loss = criterion(outputs, batch_y)
                             train_loss.append(loss.item())
                     else:
-                        if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
-                            outputs = self.model(batch_x)
-                        else:
-                            if self.args.output_attention:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                            else:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-
+                        # print(base_model)
+                        outputs = self.model(batch_x, batch_x_mark, batch_y, batch_y_mark, base_model)
 
                         f_dim = -1 if self.args.features == 'MS' else 0
                         outputs = outputs[:, -self.args.pred_len:, f_dim:]
@@ -183,10 +187,12 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                         scaler.step(model_optim)
                         scaler.update()
                     else:
+                        pass
                         # print("LOSS", loss, criterion)
                         # print("LOSS_FUNC", dir(loss))
-                        loss.backward()
-                        model_optim.step()
+
+                        # loss.backward()
+                        # model_optim.step()
 
             # print("VAL_XX", self.coeff_vectors)
             print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
@@ -215,6 +221,8 @@ class Exp_Long_Term_Forecast(Exp_Basic):
 
     def test(self, setting, test=0):
         test_data, test_loader = self._get_data(flag='test')
+        base_model = self.base_model.model
+
         if test:
             print('loading model')
             self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
@@ -226,7 +234,8 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             os.makedirs(folder_path)
 
         self.model.eval()
-        
+        coeff_vectors = self.coeff_vectors
+
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
@@ -241,21 +250,10 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
-                            outputs = self.model(batch_x)
-                        else:
-                            if self.args.output_attention:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                            else:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, base_model)
+
                 else:
-                    if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
-                        outputs = self.model(batch_x)
-                    else:
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, base_model)
 
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, :]

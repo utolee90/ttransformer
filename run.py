@@ -7,6 +7,7 @@ from exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
 from exp.exp_long_term_forecasting_partial import Exp_Long_Term_Forecast_Partial
 from exp.exp_anomaly_detection import Exp_Anomaly_Detection
 from exp.exp_classification import Exp_Classification
+from exp.exp_long_term_forecasting_piformer import Exp_Long_Term_Forecast_Piformer
 from utils.print_args import print_args
 import random
 import numpy as np
@@ -162,6 +163,10 @@ if __name__ == '__main__':
     parser.add_argument('--discsdtw', default=False, action="store_true", help="Discrimitive shapeDTW warp preset augmentation")
     parser.add_argument('--extra_tag', type=str, default="", help="Anything extra")
 
+    #piformer
+    parser.add_argument('--shuffle', type=int, default=1, help="Shuffle data when training")
+    parser.add_argument('--base_model', type=str, default="iTransformer", help="Base Model Type")
+
     args = parser.parse_args()
     # args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
     args.use_gpu = True if torch.cuda.is_available() else False
@@ -177,7 +182,9 @@ if __name__ == '__main__':
     print('Args in experiment:')
     print_args(args)
 
-    if args.task_name == 'long_term_forecast':
+    if args.task_name == 'long_term_forecast' and args.model == 'Piformer':
+        Exp = Exp_Long_Term_Forecast_Piformer
+    elif args.task_name == 'long_term_forecast':
         Exp = Exp_Long_Term_Forecast
     elif args.task_name == 'short_term_forecast':
         Exp = Exp_Short_Term_Forecast
