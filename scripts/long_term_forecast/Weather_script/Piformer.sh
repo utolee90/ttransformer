@@ -23,7 +23,9 @@ python -u run.py \
   --des 'Exp' \
   --d_model 64 \
   --d_ff 64 \
+  --base_model DLinear \
   --batch_size 16 \
   --learning_rate 0.001 \
   --itr 1 \
-  --period_len 16
+  --period_len 24 \
+  --train_epochs 1

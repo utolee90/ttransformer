@@ -212,10 +212,10 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
 
-        if self.args.model == 'Piformer':
-            coeff_vector_collections = [vec.tolist() for vec in coeff_vector_collections]
-            with open(f'./coeff_vectors_val_{self.args.model_id}_{self.args.data}.json', 'w', encoding='utf8') as X:
-                json.dump(coeff_vector_collections, X)
+        # if self.args.model == 'Piformer':
+        #     coeff_vector_collections = [vec.tolist() for vec in coeff_vector_collections]
+        #     with open(f'./coeff_vectors_val_{self.args.model_id}_{self.args.data}.json', 'w', encoding='utf8') as X:
+        #         json.dump(coeff_vector_collections, X)
 
         return self.model
 
@@ -234,7 +234,6 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
             os.makedirs(folder_path)
 
         self.model.eval()
-        coeff_vectors = self.coeff_vectors
 
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
