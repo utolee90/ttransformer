@@ -97,3 +97,49 @@ def RATIO_IRR(pred, true, coef=2): # 오차값 분석. 기본값 표준편차 2
     large_error_ratio = np.sum(large_errors) / np.size(true)
     
     return large_error_ratio
+
+# std_ratio - 참값과 예측값 표준편차 비교
+def STD_RATIO(pred, true, flag='mean'):
+    if pred.ndim == 2:
+        if flag in  ['mean', 'average', 'me', 'avg']:
+            std_pred = np.mean([np.std(pred[:, j]) for j in range(pred.shape[1])])
+            std_true = np.mean([np.std(true[:, j]) for j in range(pred.shape[1])])
+            return std_true / std_pred # 참값 대비 예측값 표준편차 평균
+        elif flag in ['median', 'med']:
+            std_pred = np.median([np.std(pred[:, j]) for j in range(pred.shape[1])])
+            std_true = np.median([np.std(true[:, j]) for j in range(pred.shape[1])])
+            return std_true / std_pred # 참값 대비 예측값 표준편차 평균
+    elif pred.ndim == 3:
+        if flag in  ['mean', 'average', 'me', 'avg']:
+            std_pred = np.mean([np.mean([np.std(pred[l, :, j]) for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            std_true = np.mean([np.mean([np.std(true[l, :, j]) for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            return std_true / std_pred
+        elif flag in  ['median', 'med']:
+            std_pred = np.median([np.median([np.std(pred[l, :, j]) for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            std_true = np.median([np.median([np.std(true[l, :, j]) for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            return std_true / std_pred
+    
+    return None
+
+# abs_ratio - mean 
+def RATE_RATIO(pred, true, flag='mean'):
+    if pred.ndim == 2:
+        if flag in  ['mean', 'average', 'me', 'avg']:
+            rate_pred = np.mean([pred[-1,j] - pred[0,j] for j in range(pred.shape[1])])
+            rate_true = np.mean([true[-1,j] - true[0,j] for j in range(pred.shape[1])])
+            return rate_true / rate_pred # 참값 대비 예측값 표준편차 평균
+        elif flag in ['median', 'med']:
+            rate_pred = np.median([pred[-1,j] - pred[0,j] for j in range(pred.shape[1])])
+            rate_true = np.median([true[-1,j] - true[0,j] for j in range(pred.shape[1])])
+            return rate_true / rate_pred # 참값 대비 예측값 표준편차 평균
+    elif pred.ndim == 3:
+        if flag in  ['mean', 'average', 'me', 'avg']:
+            rate_pred = np.mean([np.mean([pred[l, -1, j]-pred[l, 0, j] for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            rate_true = np.mean([np.mean([true[l, -1, j]-true[l, 0, j] for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            return rate_true / rate_pred
+        elif flag in  ['median', 'med']:
+            rate_pred = np.median([np.median([pred[l, -1, j]-pred[l, 0, j] for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            rate_true = np.median([np.median([true[l, -1, j]-true[l, 0, j] for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            return rate_true / rate_pred
+    
+    return None

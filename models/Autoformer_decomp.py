@@ -107,7 +107,7 @@ class Model(nn.Module):
                                                  trend=trend_init)
         # final
         dec_out = trend_part + seasonal_part
-        return dec_out
+        return dec_out, trend_part, seasonal_part
 
     def imputation(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask):
         # enc

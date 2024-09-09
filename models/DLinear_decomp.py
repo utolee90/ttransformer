@@ -70,7 +70,7 @@ class Model(nn.Module):
             seasonal_output = self.Linear_Seasonal(seasonal_init)
             trend_output = self.Linear_Trend(trend_init)
         x = seasonal_output + trend_output
-        return x.permute(0, 2, 1)
+        return x.permute(0, 2, 1), trend_output.permute(0,2,1), seasonal_output.permute(0,2,1)
 
     def forecast(self, x_enc):
         # Encoder
@@ -89,7 +89,7 @@ class Model(nn.Module):
         enc_out = self.encoder(x_enc)
         # Output
         # (batch_size, seq_length * d_model)
-        output = enc_out.reshape(enc_out.shape[0], -1)
+        output = enc_out[0].reshape(enc_out.shape[0], -1)
         # (batch_size, num_classes)
         output = self.projection(output)
         return output
@@ -97,7 +97,7 @@ class Model(nn.Module):
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
         if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
             dec_out = self.forecast(x_enc)
-            return dec_out[:, -self.pred_len:, :]  # [B, L, D]
+            return dec_out[0][:, -self.pred_len:, :], dec_out[1][:, -self.pred_len:, :], dec_out[2][:, -self.pred_len:, :]  # [B, L, D]
         if self.task_name == 'imputation':
             dec_out = self.imputation(x_enc)
             return dec_out  # [B, L, D]

@@ -8,6 +8,7 @@ from exp.exp_long_term_forecasting_partial import Exp_Long_Term_Forecast_Partial
 from exp.exp_anomaly_detection import Exp_Anomaly_Detection
 from exp.exp_classification import Exp_Classification
 from exp.exp_long_term_forecasting_piformer import Exp_Long_Term_Forecast_Piformer
+from exp.exp_long_term_forecasting_decomp import Exp_Long_Term_Forecast_Decomp
 from utils.print_args import print_args
 import random
 import numpy as np
@@ -182,7 +183,9 @@ if __name__ == '__main__':
     print('Args in experiment:')
     print_args(args)
 
-    if args.task_name == 'long_term_forecast' and args.model == 'Piformer':
+    if args.task_name == 'long_term_forecast' and '_decomp' in args.model:
+        Exp = Exp_Long_Term_Forecast_Decomp
+    elif args.task_name == 'long_term_forecast' and args.model == 'Piformer':
         Exp = Exp_Long_Term_Forecast_Piformer
     elif args.task_name == 'long_term_forecast':
         Exp = Exp_Long_Term_Forecast

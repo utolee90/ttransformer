@@ -1,7 +1,7 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.tools import EarlyStopping, adjust_learning_rate, visual
-from utils.metrics import metric, SMAE, REC_CORR, RATIO_IRR
+from utils.metrics import metric, SMAE, REC_CORR, RATIO_IRR, RATE_RATIO, STD_RATIO
 import torch
 import torch.nn as nn
 from torch import optim
@@ -226,7 +226,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             os.makedirs(folder_path)
 
         self.model.eval()
-        
+
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
@@ -313,16 +313,17 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             
 
         mae, mse, rmse, mape, mspe = metric(preds, trues)
-        smae, corr, mae_ratio = SMAE(preds, trues), REC_CORR(preds, trues), RATIO_IRR(preds, trues)
-        print('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}'.format(mse, mae, dtw, smae, mae_ratio, corr))
+        smae, corr, mae_ratio, rate_ratio, std_ratio = SMAE(preds, trues), REC_CORR(preds, trues), RATIO_IRR(preds, trues), RATE_RATIO(preds, trues), STD_RATIO(preds, trues)
+
+        print('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse, mae, dtw, smae, mae_ratio, corr, rate_ratio, std_ratio))
         f = open("result_long_term_forecast.txt", 'a')
         f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}'.format(mse, mae, dtw, smae, mae_ratio, corr))
+        f.write('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse, mae, dtw, smae, mae_ratio, corr, rate_ratio, std_ratio))
         f.write('\n')
         f.write('\n')
         f.close()
 
-        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, smae, mae_ratio, corr]))
+        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, smae, mae_ratio, corr, rate_ratio, std_ratio]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
 

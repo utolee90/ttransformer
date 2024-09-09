@@ -1,7 +1,7 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.tools import EarlyStopping, adjust_learning_rate, visual
-from utils.metrics import metric, SMAE, REC_CORR, RATIO_IRR
+from utils.metrics import metric, SMAE, REC_CORR, RATIO_IRR, RATE_RATIO, STD_RATIO
 import torch
 import torch.nn as nn
 from torch import optim
@@ -12,45 +12,24 @@ import numpy as np
 from utils.dtw_metric import dtw,accelerated_dtw
 from utils.augmentation import run_augmentation,run_augmentation_single
 import json
-from exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
-from models import Piformer
-import copy
+from layers.Autoformer_EncDec import series_decomp
 
 warnings.filterwarnings('ignore')
 
-torch.autograd.set_detect_anomaly(True)
-class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
+
+class Exp_Long_Term_Forecast_Decomp(Exp_Basic):
     def __init__(self, args):
-        super(Exp_Long_Term_Forecast_Piformer, self).__init__(args)
-        self.base_model = self._build_base_model()
-
-    def _build_base_model(self):
-        base_args = copy.deepcopy(self.args)
-        base_args.model = self.args.base_model # base_model 파라미터를 이용해서 model 정의
-        base_args.seq_len = self.args.period_len 
-        base_args.label_len = self.args.period_len // 2
-        base_args.pred_len = self.args.period_len
-        base_args.shuffle = 0
-        base_model = Exp_Long_Term_Forecast(base_args)
-        base_model._build_model()
-
-        if self.args.use_multi_gpu and self.args.use_gpu:
-            base_model = nn.DataParallel(base_model, device_ids=self.args.device_ids)
-        
-        base_model.model.eval() # evaluation 모드만 사용
-        self.base_model = base_model
-        
-        return base_model
+        super(Exp_Long_Term_Forecast_Decomp, self).__init__(args)
 
     def _build_model(self):
-        model = Piformer.Model(self.args).float()
+        model = self.model_dict[self.args.model].Model(self.args).float()
+        self.coeff_vectors = torch.ones(1) # 편의상 아무 torch로 정의 
+        self.train_data_count = 0 # 훈련 횟수
+
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
             
         return model
-        
-    def _get_base_data(self, flag):
-        return self._build_base_model()._get_data()
 
     def _get_data(self, flag):
         data_set, data_loader = data_provider(self.args, flag)
@@ -64,10 +43,10 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
         criterion = nn.MSELoss()
         return criterion
 
-    def vali(self, vali_data, vali_loader, criterion, coeff_vector=np.array([1, 0])):
+    def vali(self, vali_data, vali_loader, criterion):
         total_loss = []
         self.model.eval()
-        base_model = self.base_model.model
+        coeff_vectors = self.coeff_vectors # vector 값 불러오기
 
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
@@ -83,11 +62,21 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, base_model)
-
+                        if any(substr in self.args.model for substr in {'PITS_decomp'}):
+                            outputs = self.model(batch_x)[0]
+                        else:
+                            if self.args.output_attention:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0][0]
+                            else:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                 else:
-                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, base_model)
-
+                    if any(substr in self.args.model for substr in {'PITS_decomp'}):
+                        outputs = self.model(batch_x)[0]
+                    else:
+                        if self.args.output_attention:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0][0]
+                        else:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
@@ -103,12 +92,9 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
         return total_loss
 
     def train(self, setting):
-
         train_data, train_loader = self._get_data(flag='train')
         vali_data, vali_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
-        
-        base_model = self.base_model.model
 
         path = os.path.join(self.args.checkpoints, setting)
         if not os.path.exists(path):
@@ -126,7 +112,7 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
             scaler = torch.cuda.amp.GradScaler()
 
         train_len = len(train_data)
-        
+
         if self.args.train_step >=1.0:
             selected_indices = [int(i* self.args.train_step) for i in range(int(train_len/self.args.train_step)+1) if i* self.args.train_step<= train_len ]
         else:
@@ -155,8 +141,13 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
                     # encoder - decoder
                     if self.args.use_amp:
                         with torch.cuda.amp.autocast():
-
-                            outputs = self.model(batch_x, batch_x_mark, batch_y, batch_y_mark, base_model)
+                            if any(substr in self.args.model for substr in {'PITS_decomp'}):
+                                outputs = self.model(batch_x)[0]
+                            else:
+                                if self.args.output_attention:
+                                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0][0]
+                                else:
+                                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
 
                             f_dim = -1 if self.args.features == 'MS' else 0
                             outputs = outputs[:, -self.args.pred_len:, f_dim:]
@@ -164,8 +155,14 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
                             loss = criterion(outputs, batch_y)
                             train_loss.append(loss.item())
                     else:
-                        # print(base_model)
-                        outputs = self.model(batch_x, batch_x_mark, batch_y, batch_y_mark, base_model)
+                        if any(substr in self.args.model for substr in {'PITS_decomp'}):
+                            outputs = self.model(batch_x)[0]
+                        else:
+                            if self.args.output_attention:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0][0]
+                            else:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+
 
                         f_dim = -1 if self.args.features == 'MS' else 0
                         outputs = outputs[:, -self.args.pred_len:, f_dim:]
@@ -187,11 +184,9 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
                         scaler.step(model_optim)
                         scaler.update()
                     else:
-                        pass
                         # print("LOSS", loss, criterion)
                         # print("LOSS_FUNC", dir(loss))
-
-                        # loss.backward()
+                        loss.backward()
                         model_optim.step()
 
             # print("VAL_XX", self.coeff_vectors)
@@ -212,29 +207,34 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
 
-        # if self.args.model == 'Piformer':
-        #     coeff_vector_collections = [vec.tolist() for vec in coeff_vector_collections]
-        #     with open(f'./coeff_vectors_val_{self.args.model_id}_{self.args.data}.json', 'w', encoding='utf8') as X:
-        #         json.dump(coeff_vector_collections, X)
+        if self.args.model == 'Piformer':
+            coeff_vector_collections = [vec.tolist() for vec in coeff_vector_collections]
+            with open(f'./coeff_vectors_val_{self.args.model_id}_{self.args.data}.json', 'w', encoding='utf8') as X:
+                json.dump(coeff_vector_collections, X)
 
         return self.model
 
     def test(self, setting, test=0):
         test_data, test_loader = self._get_data(flag='test')
-        base_model = self.base_model.model
-
         if test:
             print('loading model')
             self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
 
         preds = []
         trues = []
+        preds_trend = []
+        preds_seasonal = []
+        trues_trend = []
+        trues_seasonal = []
         folder_path = './test_results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
         self.model.eval()
 
+        # print(dir(self.model))
+        decomp = self.model.decomposition
+        
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
@@ -249,14 +249,26 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, base_model)
-
+                        if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
+                            outputs, trends, seasonals = self.model(batch_x)
+                        else:
+                            if self.args.output_attention:
+                                outputs, trends, seasonals = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                            else:
+                                outputs, trends, seasonals = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
-                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, base_model)
+                    if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
+                        outputs, trends, seasonals = self.model(batch_x)
+                    else:
+                        if self.args.output_attention:
+                            outputs, trends, seasonals = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                        else:
+                            outputs, trends, seasonals = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, :]
                 batch_y = batch_y[:, -self.args.pred_len:, :].to(self.device)
+                batch_y_s, batch_y_t = decomp(batch_y)
                 outputs = outputs.detach().cpu().numpy()
                 batch_y = batch_y.detach().cpu().numpy()
                 if test_data.scale and self.args.inverse:
@@ -265,13 +277,26 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
                     batch_y = test_data.inverse_transform(batch_y.reshape(shape[0] * shape[1], -1)).reshape(shape)
         
                 outputs = outputs[:, :, f_dim:]
+                trends = trends[:, :, f_dim:]
+                seasonals = seasonals[:, :, f_dim:]
                 batch_y = batch_y[:, :, f_dim:]
+                batch_y_s = batch_y_s[:, :, f_dim:]
+                batch_y_t = batch_y_t[:, :, f_dim:]
 
                 pred = outputs
+                pred_t = trends.detach().cpu().numpy()
+                pred_s = seasonals.detach().cpu().numpy()
                 true = batch_y
+                true_s = batch_y_s.detach().cpu().numpy()
+                true_t = batch_y_t.detach().cpu().numpy()
 
                 preds.append(pred)
                 trues.append(true)
+                preds_trend.append(pred_t)
+                preds_seasonal.append(pred_s)
+                trues_trend.append(true_t)
+                trues_seasonal.append(true_s)
+
                 if i % 20 == 0:
                     input = batch_x.detach().cpu().numpy()
                     if test_data.scale and self.args.inverse:
@@ -283,9 +308,18 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
 
         preds = np.concatenate(preds, axis=0)
         trues = np.concatenate(trues, axis=0)
+        preds_trend = np.concatenate(preds_trend, axis=0)
+        preds_seasonal = np.concatenate(preds_seasonal, axis=0)
+        trues_trend = np.concatenate(trues_trend, axis=0)
+        trues_seasonal = np.concatenate(trues_seasonal, axis=0)
+
         print('test shape:', preds.shape, trues.shape)
         preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
         trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
+        preds_trend = preds_trend.reshape(-1, preds_trend.shape[-2], preds_trend.shape[-1])
+        preds_seasonal = preds_seasonal.reshape(-1, preds_seasonal.shape[-2], preds_seasonal.shape[-1])
+        trues_trend = trues_trend.reshape(-1, trues_trend.shape[-2], trues_trend.shape[-1])
+        trues_seasonal = trues_seasonal.reshape(-1, trues_seasonal.shape[-2], trues_seasonal.shape[-1])
         print('test shape:', preds.shape, trues.shape)
 
         # result save
@@ -310,17 +344,33 @@ class Exp_Long_Term_Forecast_Piformer(Exp_Basic):
             
 
         mae, mse, rmse, mape, mspe = metric(preds, trues)
-        smae, corr, mae_ratio = SMAE(preds, trues), REC_CORR(preds, trues), RATIO_IRR(preds, trues)
-        print('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}'.format(mse, mae, dtw, smae, mae_ratio, corr))
+        smae, corr, mae_ratio, rate_ratio, std_ratio  = SMAE(preds, trues), REC_CORR(preds, trues), RATIO_IRR(preds, trues), RATE_RATIO(preds, trues), STD_RATIO(preds, trues)
+        print('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse, mae, dtw, smae, mae_ratio, corr, rate_ratio, std_ratio))
+        mae_t, mse_t, _, _, _ = metric(preds_trend, trues_trend)
+        mae_s, mse_s, _, _, _ = metric(preds_seasonal, trues_seasonal)
+        smae_t, corr_t, mae_ratio_t, rate_ratio_t, std_ratio_t = \
+            SMAE(preds_trend, trues_trend), REC_CORR(preds_trend, trues_trend), RATIO_IRR(preds_trend, trues_trend), RATE_RATIO(preds_trend, trues_trend), STD_RATIO(preds_trend, trues_trend)
+        print('(TREND) mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio{}, std_ratio:{}'.format(mse_t, mae_t, dtw, smae_t, mae_ratio_t, corr_t, rate_ratio_t, std_ratio_t))
+        smae_s, corr_s, mae_ratio_s, rate_ratio_s, std_ratio_s = \
+            SMAE(preds_seasonal, trues_seasonal), REC_CORR(preds_seasonal, trues_seasonal), RATIO_IRR(preds_seasonal, trues_seasonal), RATE_RATIO(preds_seasonal, trues_seasonal), STD_RATIO(preds_seasonal, trues_seasonal)
+        print('(SEASONAL) mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse_s, mae_s, dtw, smae_s, mae_ratio_s, corr_s, rate_ratio_s, std_ratio_s))
         f = open("result_long_term_forecast.txt", 'a')
         f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}'.format(mse, mae, dtw, smae, mae_ratio, corr))
+        f.write('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}\n'.format(mse, mae, dtw, smae, mae_ratio, corr, rate_ratio, std_ratio))
+        f.write('(TREND) mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}\n'.format(mse_t, mae_t, dtw, smae_t, mae_ratio_t, corr_t, rate_ratio_t, std_ratio_t))
+        f.write('(SEASONAL) mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse_s, mae_s, dtw, smae_s, mae_ratio_s, corr_s, rate_ratio_s, std_ratio_s))
         f.write('\n')
         f.write('\n')
         f.close()
 
-        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, smae, mae_ratio, corr]))
+        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, smae, mae_ratio, corr, rate_ratio, std_ratio]))
+        np.save(folder_path + 'metrics_t.npy', np.array([mae_t, mse_t, smae_t, mae_ratio_t, corr_t, rate_ratio_t, std_ratio_t]))
+        np.save(folder_path + 'metrics_s.npy', np.array([mae_s, mse_s, smae_s, mae_ratio_s, corr_s, rate_ratio_s, std_ratio_s]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
+        np.save(folder_path + 'pred_trend.npy', preds_trend)
+        np.save(folder_path + 'true_trend.npy', trues_trend)
+        np.save(folder_path + 'pred_seasonal.npy', preds_seasonal)
+        np.save(folder_path + 'true_seasonal.npy', trues_seasonal)
 
         return

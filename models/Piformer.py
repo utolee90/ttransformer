@@ -113,14 +113,32 @@ class Model(nn.Module):
         # y값 유도
         dec_out_stack = []
         for j, coef_vector in enumerate(coefs):
+
             dec_out_part = torch.zeros_like(x_dec_list[0])
             # print(x_dec_list[0].shape)
+            
             for k, elem in enumerate(coef_vector):
                 if k< self.seg_num_x:
                     # print(j, k, elem.item(), len(x_res[j]), x_res[j][k].shape)
                     dec_out_part = dec_out_part.clone() + elem.item() * x_res[j][k]
                 else:
                     dec_out_part = dec_out_part.clone() + elem.item() * torch.ones_like(x_res[j][0])
+            """
+            if j == 0:
+                for k, elem in enumerate(coef_vector):
+                    if k< self.seg_num_x:
+                        # print(j, k, elem.item(), len(x_res[j]), x_res[j][k].shape)
+                        dec_out_part = dec_out_part.clone() + elem.item() * x_res[j][k]
+                    else:
+                        dec_out_part = dec_out_part.clone() + elem.item() * torch.ones_like(x_res[j][0])
+            else:
+                if any(substr in self.base_model for substr in {'SparseTSF', 'PITS'}):
+                    dec_out_part = base_model(dec_out_stack[j-1])
+                else:
+                    # 0텐서 사용
+                    temp_y_enc = torch.zeros(x_enc_part.shape[0], x_enc_part.shape[1]*3//2, x_enc_part.shape[2])
+                    dec_out_part = base_model(dec_out_stack[j-1], x_mark_enc_list[0], temp_y_enc, x_mark_dec_list[0])
+            """
             dec_out_stack.append(dec_out_part)
 
         # dec_out 값 유도
@@ -128,7 +146,7 @@ class Model(nn.Module):
         dummy_vectors = [[1/self.seg_num_x for _ in range(self.seg_num_x)]+ [0] for _ in range(self.seg_num_y)]
         dummy_vectors_2 = [[1 if j==self.seg_num_x-1 else 0 for j in range(self.seg_num_x +1)] for _ in range(self.seg_num_y)]
 
-        dec_out = dec_out = torch.cat(dec_out_stack, dim=1)
+        dec_out = torch.cat(dec_out_stack, dim=1)
 
         # De-Normalization from Non-stationary Transformer
 

@@ -48,6 +48,11 @@ def print_args(args):
     print(f'  {"Lradj:":<20}{args.lradj:<20}{"Use Amp:":<20}{args.use_amp:<20}')
     print()
 
+    print("\033[1m" + "Train/Test Ratio" + "\033[0m")
+    print(f'  {"Train Ratio:":<20}{args.train_ratio:<20}{"Test Ratio:":<20}{args.test_ratio:<20}')
+    print(f'  {"Train Steps:":<20}{args.train_step:<20}')
+    print()
+
     print("\033[1m" + "GPU" + "\033[0m")
     print(f'  {"Use GPU:":<20}{args.use_gpu:<20}{"GPU:":<20}{args.gpu:<20}')
     print(f'  {"Use Multi GPU:":<20}{args.use_multi_gpu:<20}{"Devices:":<20}{args.devices:<20}')
@@ -57,3 +62,5 @@ def print_args(args):
     p_hidden_dims_str = ', '.join(map(str, args.p_hidden_dims))
     print(f'  {"P Hidden Dims:":<20}{p_hidden_dims_str:<20}{"P Hidden Layers:":<20}{args.p_hidden_layers:<20}') 
     print()
+
+
