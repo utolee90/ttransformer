@@ -113,6 +113,19 @@ class Exp_Long_Term_Forecast_Decomp(Exp_Basic):
 
         train_len = len(train_data)
 
+        decomp = self.model.decomposition
+
+        folder_path = './results/' + setting + '/'
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        preds = []
+        trues = []
+        preds_trend = []
+        preds_seasonal = []
+        trues_trend = []
+        trues_seasonal = []
+
         if self.args.train_step >=1.0:
             selected_indices = [int(i* self.args.train_step) for i in range(int(train_len/self.args.train_step)+1) if i* self.args.train_step<= train_len ]
         else:
@@ -135,33 +148,38 @@ class Exp_Long_Term_Forecast_Decomp(Exp_Basic):
                     batch_y_mark = batch_y_mark.float().to(self.device)
 
                     # decoder input
-                    dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                    dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                    if self.args.model == 'DiTransformer_decomp':
+                        dec_inp = batch_y
+                    else:
+                        dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
+                        dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
                     # encoder - decoder
                     if self.args.use_amp:
                         with torch.cuda.amp.autocast():
                             if any(substr in self.args.model for substr in {'PITS_decomp'}):
-                                outputs = self.model(batch_x)[0]
+                                outputs, trends, seasonals = self.model(batch_x)
                             else:
                                 if self.args.output_attention:
-                                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0][0]
+                                    outputs, trends, seasonals = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                                 else:
-                                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                                    outputs, trends, seasonals = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
                             f_dim = -1 if self.args.features == 'MS' else 0
                             outputs = outputs[:, -self.args.pred_len:, f_dim:]
+                            trends = trends[:, -self.args.pred_len:, f_dim:]
+                            seasonals = seasonals[:, -self.args.pred_len:, f_dim:]
                             batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
                             loss = criterion(outputs, batch_y)
                             train_loss.append(loss.item())
                     else:
                         if any(substr in self.args.model for substr in {'PITS_decomp'}):
-                            outputs = self.model(batch_x)[0]
+                            outputs, trends, seasonals = self.model(batch_x)
                         else:
                             if self.args.output_attention:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0][0]
+                                outputs, trends, seasonals = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                             else:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                                outputs, trends, seasonals = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
 
                         f_dim = -1 if self.args.features == 'MS' else 0
@@ -188,6 +206,25 @@ class Exp_Long_Term_Forecast_Decomp(Exp_Basic):
                         # print("LOSS_FUNC", dir(loss))
                         loss.backward()
                         model_optim.step()
+                
+                batch_y_s, batch_y_t = decomp(batch_y)
+                pred = outputs[:, :, f_dim:].detach().cpu().numpy()
+                true = batch_y[:, :, f_dim:].detach().cpu().numpy()
+                trends = trends[:, :, f_dim:]
+                pred_t = trends.detach().cpu().numpy()
+                seasonals = seasonals[:, :, f_dim:]
+                pred_s = seasonals.detach().cpu().numpy()
+                true_t = batch_y_t.detach().cpu().numpy()
+                true_s = batch_y_s.detach().cpu().numpy()
+
+                # 기록하고 싶을 때 
+                if True:
+                    preds.append(pred)
+                    trues.append(true)
+                    preds_trend.append(pred_t)
+                    preds_seasonal.append(pred_s)
+                    trues_trend.append(true_t)
+                    trues_seasonal.append(true_s)
 
             # print("VAL_XX", self.coeff_vectors)
             print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
@@ -206,6 +243,23 @@ class Exp_Long_Term_Forecast_Decomp(Exp_Basic):
 
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
+
+        # train 결과 기록하기
+        if True:
+            preds = np.concatenate(preds, axis=0)
+            trues = np.concatenate(trues, axis=0)
+            preds_trend = np.concatenate(preds_trend, axis=0)
+            preds_seasonal = np.concatenate(preds_seasonal, axis=0)
+            trues_trend = np.concatenate(trues_trend, axis=0)
+            trues_seasonal = np.concatenate(trues_seasonal, axis=0)
+            np.save(folder_path + 'pred_train.npy', preds)
+            np.save(folder_path + 'true_train.npy', trues)
+            np.save(folder_path + 'pred_trend_train.npy', preds_trend)
+            np.save(folder_path + 'true_trend_train.npy', trues_trend)
+            np.save(folder_path + 'pred_seasonal_train.npy', preds_seasonal)
+            np.save(folder_path + 'true_seasonal_train.npy', trues_seasonal)
+
+
 
         if self.args.model == 'Piformer':
             coeff_vector_collections = [vec.tolist() for vec in coeff_vector_collections]

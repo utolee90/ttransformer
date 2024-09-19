@@ -12,7 +12,7 @@ python -u run.py \
   --data custom \
   --features M \
   --seq_len 96 \
-  --label_len 24 \
+  --label_len 48 \
   --pred_len 96 \
   --period_len 24 \
   --e_layers 2 \
@@ -31,12 +31,12 @@ python -u run.py \
   --is_training 1 \
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate_decomp_s.npz \
-  --model_id Exchange_96_48_seasonal \
+  --model_id Exchange_96_96_seasonal \
   --model $model_name \
   --data PEMS \
   --features M \
   --seq_len 96 \
-  --label_len 24 \
+  --label_len 48 \
   --pred_len 96 \
   --period_len 24 \
   --e_layers 2 \
@@ -48,14 +48,14 @@ python -u run.py \
   --c_out 8 \
   --batch_size 8\
   --des 'Exp' \
-  --itr 1 # > logs/LongForecasting/Exchange_RATE_$model_name'_'tester_$seq_len'_'$pred_len.log 
+  --scale 0  # > logs/LongForecasting/Exchange_RATE_$model_name'_'tester_$seq_len'_'$pred_len.log 
 
     python -u run.py \
   --task_name long_term_forecast \
   --is_training 1 \
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate_decomp_t.npz \
-  --model_id Exchange_96_48_trend \
+  --model_id Exchange_96_96_trend \
   --model $model_name \
   --data PEMS \
   --features M \
@@ -72,5 +72,5 @@ python -u run.py \
   --c_out 8 \
   --batch_size 8\
   --des 'Exp' \
-  --itr 1 # > logs/LongForecasting/Exchange_RATE_$model_name'_'tester_$seq_len'_'$pred_len.log 
+  --scale 0 # > logs/LongForecasting/Exchange_RATE_$model_name'_'tester_$seq_len'_'$pred_len.log 
 

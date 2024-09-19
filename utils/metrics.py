@@ -127,11 +127,11 @@ def RATE_RATIO(pred, true, flag='mean'):
         if flag in  ['mean', 'average', 'me', 'avg']:
             rate_pred = np.mean([pred[-1,j] - pred[0,j] for j in range(pred.shape[1])])
             rate_true = np.mean([true[-1,j] - true[0,j] for j in range(pred.shape[1])])
-            return rate_true / rate_pred # 참값 대비 예측값 표준편차 평균
+            return rate_true / rate_pred # 참값 대비 예측값 평균기울기 평균
         elif flag in ['median', 'med']:
             rate_pred = np.median([pred[-1,j] - pred[0,j] for j in range(pred.shape[1])])
             rate_true = np.median([true[-1,j] - true[0,j] for j in range(pred.shape[1])])
-            return rate_true / rate_pred # 참값 대비 예측값 표준편차 평균
+            return rate_true / rate_pred # 참값 대비 예측값 평균기울기 중간값
     elif pred.ndim == 3:
         if flag in  ['mean', 'average', 'me', 'avg']:
             rate_pred = np.mean([np.mean([pred[l, -1, j]-pred[l, 0, j] for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
@@ -140,6 +140,41 @@ def RATE_RATIO(pred, true, flag='mean'):
         elif flag in  ['median', 'med']:
             rate_pred = np.median([np.median([pred[l, -1, j]-pred[l, 0, j] for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
             rate_true = np.median([np.median([true[l, -1, j]-true[l, 0, j] for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            return rate_true / rate_pred
+    
+    return None
+
+# 선형회귀 계수 구하기
+def get_slope(X, y):
+    # X와 y의 평균
+    x_mean = np.mean(X)
+    y_mean = np.mean(y)
+    
+    # 기울기 (slope) 계산
+    w = np.sum((X - x_mean) * (y - y_mean)) / np.sum((X - x_mean) ** 2)
+    
+    return w
+
+# slope_ratio - mean
+def SLOPE_RATIO(pred, true, flag='mean'):
+    X = np.array(range(pred.shape[-2])) # 기울기
+    if pred.ndim == 2:
+        if flag in  ['mean', 'average', 'me', 'avg']:
+            rate_pred = np.mean([get_slope(X, pred[:, j]) for j in range(pred.shape[1])])
+            rate_true = np.mean([get_slope(X, true[:, j])  for j in range(pred.shape[1])])
+            return rate_true / rate_pred # 참값 대비 예측값 기울기 평균
+        elif flag in ['median', 'med']:
+            rate_pred = np.median([get_slope(X, pred[:, j]) for j in range(pred.shape[1])])
+            rate_true = np.median([get_slope(X, true[:, j])for j in range(pred.shape[1])])
+            return rate_true / rate_pred # 참값 대비 예측값 기울기 중간값
+    elif pred.ndim == 3:
+        if flag in  ['mean', 'average', 'me', 'avg']:
+            rate_pred = np.mean([np.mean([get_slope(X, pred[l, :, j]) for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            rate_true = np.mean([np.mean([get_slope(X, true[l, :, j]) for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            return rate_true / rate_pred
+        elif flag in  ['median', 'med']:
+            rate_pred = np.median([np.median([get_slope(X, pred[l, :, j]) for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
+            rate_true = np.median([np.median([get_slope(X, pred[l, :, j]) for j in range(pred.shape[2])]) for l in range(pred.shape[0])])
             return rate_true / rate_pred
     
     return None
