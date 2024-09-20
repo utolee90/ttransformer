@@ -66,4 +66,4 @@ python -u run.py \
   --c_out 8 \
   --des 'Exp' \
   --itr 1 \
-  --moving_avg 101 > logs/LongForecasting/Exchange_RATE_$model_name2'_'tester_$seq_len'_'$pred_len'_'2.log 
+  --moving_avg 101 # > logs/LongForecasting/Exchange_RATE_$model_name2'_'tester_$seq_len'_'$pred_len'_'2.log 

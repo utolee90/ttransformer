@@ -154,9 +154,9 @@ class Model(nn.Module):
         # a0, a1 = self.train_linear_approximation(x_enc)
 
         # time_step_out
-        t_out = torch.arange(self.pred_len)  # (-95,..., 0)
-        t_out = t_out.float().unsqueeze(0).unsqueeze(-1) # (1, time, 1)
-        t_out = t_out.repeat(B, 1, N) # BATCH_SIZE, TIME_STEPs, Variable
+        # t_out = torch.arange(self.pred_len)  # (-95,..., 0)
+        # t_out = t_out.float().unsqueeze(0).unsqueeze(-1) # (1, time, 1)
+        # t_out = t_out.repeat(B, 1, N) # BATCH_SIZE, TIME_STEPs, Variable
 
 
         # Normalization from Non-stationary Transformer - s, t
@@ -206,15 +206,18 @@ class Model(nn.Module):
         # print(np.array(lin_result).shape)
         lin_result = torch.Tensor(np.array(lin_result)).to(self.device).permute(0, 2, 1)
 
-        # t_dec_out = 0.9 * t_dec_out + 0.1 * lin_result
-        t_dec_out = 0.05 * t_dec_out + 0.95 * lin_result
+        t_dec_out = lin_result
+        # t_dec_out = 0.5 * t_dec_out + 0.49 * lin_result
+        # t_dec_out = 0.001 * t_dec_out + 0.999 * lin_result
+        # t_dec_out = t_dec_out + 0.2* lin_result
 
-        epsilon = 1e-6
-        if not torch.all(torch.abs(x_dec) < epsilon):
-            me_dec_out = SMAE(t_dec_out.detach().cpu().numpy(), x_dec_t.detach().cpu().numpy())
+        # epsilon = 1e-6
+        # if not torch.all(torch.abs(x_dec) < epsilon):
+        #     me_dec_out = SMAE(t_dec_out.detach().cpu().numpy(), x_dec_t.detach().cpu().numpy())
 
         # t_dec_out = t_dec_out - 0.04 * torch.ones_like(t_dec_out)
 
+        # dec_out = s_dec_out + t_dec_out
         dec_out = s_dec_out + t_dec_out
 
         return dec_out, t_dec_out, s_dec_out

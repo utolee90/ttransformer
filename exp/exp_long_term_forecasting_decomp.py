@@ -260,12 +260,6 @@ class Exp_Long_Term_Forecast_Decomp(Exp_Basic):
             np.save(folder_path + 'true_seasonal_train.npy', trues_seasonal)
 
 
-
-        if self.args.model == 'Piformer':
-            coeff_vector_collections = [vec.tolist() for vec in coeff_vector_collections]
-            with open(f'./coeff_vectors_val_{self.args.model_id}_{self.args.data}.json', 'w', encoding='utf8') as X:
-                json.dump(coeff_vector_collections, X)
-
         return self.model
 
     def test(self, setting, test=0):

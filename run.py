@@ -208,6 +208,16 @@ if __name__ == '__main__':
         for ii in range(args.itr):
             # setting record of experiments
             exp = Exp(args)  # set experiments
+            setting = '{}_{}_Mod-{}_data-{}_({}to{})_{}({})'.format(
+                args.task_name,
+                args.model_id,
+                args.model,
+                args.data_path,
+                args.seq_len,
+                args.pred_len,
+                ii,
+                timestamp)
+            """
             setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}({})'.format(
                 args.task_name,
                 args.model_id,
@@ -228,7 +238,7 @@ if __name__ == '__main__':
                 args.embed,
                 args.distil,
                 args.des, ii, timestamp)
-            
+            """
             #setting이 너무 길어지므로 model_id + model + timestamp만 남기고 대신 argment를 text에 저장
             with open('exp_arguments_store.txt', 'a', encoding='utf8') as X:
                 X.write(str(timestamp) + " :::" + str(args) + '\n')
@@ -241,6 +251,17 @@ if __name__ == '__main__':
             torch.cuda.empty_cache()
     else:
         ii = 0
+
+        setting = '{}_{}_Mod-{}_data-{}_({}to{})_{}({})'.format(
+                args.task_name,
+                args.model_id,
+                args.model,
+                args.data_path,
+                args.seq_len,
+                args.pred_len,
+                ii,
+                timestamp)
+        """
         setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}({})'.format(
             args.task_name,
             args.model_id,
@@ -261,7 +282,7 @@ if __name__ == '__main__':
             args.embed,
             args.distil,
             args.des, ii, timestamp)
-        
+        """
         #setting이 너무 길어지므로 model_id + model + timestamp만 남기고 대신 argment를 text에 저장
         with open('exp_arguments_store.txt', 'a', encoding='utf8') as X:
             X.write(str(timestamp) + " :::" + str(args) + '\n')
