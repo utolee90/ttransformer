@@ -2,6 +2,9 @@ export CUDA_VISIBLE_DEVICES=0
 
 model_name=DiTransformer_decomp
 
+models=("DiTransformer_decomp" "DLinear_trend")
+for model_name in "${models[@]}"
+do
 python -u run.py \
   --task_name long_term_forecast \
   --is_training 1 \
@@ -25,4 +28,6 @@ python -u run.py \
   --d_model 64 \
   --d_ff 128 \
   --des 'Exp' \
+  --shuffle 0\
   --itr 1 # > logs/LongForecasting/Exchange_RATE_$model_name'_'tester_$seq_len'_'$pred_len.log 
+done

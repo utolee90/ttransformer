@@ -150,7 +150,7 @@ class Model(nn.Module):
         # 최종 출력
         x = lin_result
         # x = lin_result*0.9 + trend_output*0.1
-        return x.permute(0, 2, 1)
+        return x.permute(0, 2, 1), x.permute(0, 2, 1), torch.zeros_like(x.permute(0,2,1))
 
     def linear_regression_direct(self, X, y):
         # 선형 회귀를 행렬 곱으로 직접 계산
@@ -246,8 +246,8 @@ class Model(nn.Module):
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
         if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
-            dec_out = self.forecast(x_enc)
-            return dec_out[:, -self.pred_len:, :]  # [B, L, D]
+            dec_out, t_out, s_out = self.forecast(x_enc)
+            return dec_out[:, -self.pred_len:, :], t_out[:, -self.pred_len:, :], s_out[:, -self.pred_len:, :]  # [B, L, D]
         if self.task_name == 'imputation':
             dec_out = self.imputation(x_enc)
             return dec_out  # [B, L, D]

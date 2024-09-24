@@ -3,7 +3,7 @@ import torch
 from models import Autoformer, Piformer_archived, Transformer, TimesNet, Nonstationary_Transformer, DLinear, FEDformer, \
     Informer, LightTS, Reformer, ETSformer, Pyraformer, PatchTST, MICN, Crossformer, FiLM, iTransformer, \
     Koopa, TiDE, FreTS, TimeMixer, TSMixer, SegRNN, MambaSimple, TemporalFusionTransformer, SparseTSF, PITS, DiTransformer, \
-    Autoformer_decomp, DLinear_decomp, PITS_decomp, DiTransformer_decomp, DLinear_trend
+    Autoformer_decomp, DLinear_decomp, PITS_decomp, DiTransformer_decomp, DLinear_trend, DLinear_trend_decomp
 
 
 class Exp_Basic(object):
@@ -42,7 +42,8 @@ class Exp_Basic(object):
             'DLinear_decomp': DLinear_decomp,
             'PITS_decomp': PITS_decomp,
             'DiTransformer_decomp': DiTransformer_decomp,
-            'DLinear_trend': DLinear_trend
+            'DLinear_trend': DLinear_trend, 
+            'DLinear_trend_decomp': DLinear_trend_decomp
         }
         if args.model == 'Mamba':
             print('Please make sure you have successfully installed mamba_ssm')

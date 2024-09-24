@@ -28,9 +28,9 @@ class Model(nn.Module):
         self.channels = configs.enc_in
         self.device = torch.device('cuda:{}'.format(configs.gpu))
 
-
         # self.Linear_Seasonal = nn.Linear(self.seq_len, self.pred_len)
         self.Linear_Trend = nn.Linear(self.seq_len, self.pred_len)
+        self.Linear_coef = nn.Linear(configs.enc_in*2, configs.enc_in*2) # 상수 계수 추적.
 
         # linear regresion
         self.linear_regression = nn.Linear(1, 1, bias=True)
@@ -44,75 +44,6 @@ class Model(nn.Module):
             self.projection = nn.Linear(
                 configs.enc_in * configs.seq_len, configs.num_class)
 
-    """
-    def encoder(self, x):
-        seasonal_init, trend_init = self.decomposition(x)
-        seasonal_init, trend_init = seasonal_init.permute(
-            0, 2, 1), trend_init.permute(0, 2, 1)
-        
-        B, N, L = trend_init.shape
-
-        # seasonal_output = self.Linear_Seasonal(seasonal_init)
-        trend_output = self.Linear_Trend(trend_init)
-
-         # 입력 시간 변수 생성 (시간축 정보를 위한 텐서)
-        t = torch.arange(-self.seq_len, 0, dtype=torch.float32).unsqueeze(1).to(self.device)  # shape: [seq_len, 1]
-        t_new = torch.arange(0, self.seq_len, dtype=torch.float32).unsqueeze(1).to(self.device)  # 예측을 위한 시간 변수
-
-        # t와 t_new를 배치 및 변수 차원에 맞게 확장
-        t = t.unsqueeze(0).unsqueeze(0).expand(B, N, -1, -1)  # shape: [B, N, seq_len, 1]
-        t_new = t_new.unsqueeze(0).unsqueeze(0).expand(B, N, -1, -1)  # shape: [B, N, seq_len, 1]
-
-        # trend_init을 선형 회귀 모델에 입력하여 예측값 계산
-        trend_init = trend_init.unsqueeze(-1)  # shape: [B, N, seq_len, 1]
-
-        # 선형 회귀 모델을 통해 가중치 학습 및 예측
-        self.linear_regression = self.linear_regression.to(self.device)
-        # 입력을 reshape하여 [B*N*seq_len, 1] 형태로 변환
-        t_flat = t.reshape(-1, 1)
-        trend_flat = trend_init.reshape(-1, 1)
-
-        # 선형 회귀 모델 학습
-        pred_flat = self.linear_regression(t_flat)
-
-        # 예측값을 원래 형태로 복원
-        pred = pred_flat.reshape(B, N, L)
-
-        # 새로운 시간 변수에 대해 예측
-        t_new_flat = t_new.reshape(-1, 1)
-        pred_new_flat = self.linear_regression(t_new_flat)
-        pred_new = pred_new_flat.reshape(B, N, L)
-
-        # 결과를 반환
-        x = pred_new
-        return x.permute(0, 2, 1)
-        """
-
-    """
-        # Linear Regression 이용해서 추가
-        X = np.array([[t] for t in range(-self.seq_len, 0)]) # -seq_len ~-1
-        X_new = np.array([[t] for t in range(self.seq_len)]) # -seq_len ~-1
-
-        # new_trend_output = trend_output.cpu().numpy()
-
-        vals = [[self.linear_regression_lstsq(X, trend_output[idx, var , :]) for var in range(N)] for idx in range(B)]
-        lin_result = [[self.linear_predict(X_new, vals[idx][var]) for var in range(N)] for idx in range(B)]
-        # print(type(lin_result[0][0]))
-        # print(lin_result[0][0].shape)
-        # lin_result = torch.concat(lin_result).to(self.device)
-        lin_result = torch.stack([torch.stack(lin_result[idx], dim=0).to(self.device) for idx in range(B)], dim=0).to(self.device)
-
-        # x = seasonal_output + trend_output
-        x = lin_result
-        # x = trend_output
-        return x.permute(0, 2, 1)
-        """
-    # 변수 얻기
-    @staticmethod
-    def get_time_input(seq_len, pred_len):
-        X = np.array([[t] for t in range(-seq_len, 0)])  # X는 입력 feature, shape: [seq_len, 1]
-        X_new = np.array([[t] for t in range(pred_len)])  # 예측을 위한 새로운 시간 변수
-        return X, X_new
 
     def encoder(self, x):
         seasonal_init, trend_init = self.decomposition(x)
@@ -123,33 +54,19 @@ class Model(nn.Module):
         # trend_output 계산
         trend_output = self.Linear_Trend(trend_init)
 
-        #X_obj = dict()
-        #X_new_obj = dict()
         # 시간 변수 생성
-        #for j in range(5):
-        #    X, X_new = self.get_time_input(self.seq_len//2**j, self.pred_len)
-        #    X_obj[j] = X
-        #    X_new_obj[j] = X_new
         X = np.array([[t] for t in range(-self.seq_len, 0)])  # X는 입력 feature, shape: [seq_len, 1]
         X_new = np.array([[t] for t in range(self.seq_len)])  # 예측을 위한 새로운 시간 변수
         
         # 각 배치와 변수에 대해 선형 회귀 해를 계산
-        vals = [[self.linear_regression_direct(X, x.permute(0,2,1)[idx, var , :]) for var in range(N)] for idx in range(B)]
+        vals = [[self.linear_regression_direct(X, trend_output[idx, var , :]) for var in range(N)] for idx in range(B)]
         lin_result = [[self.linear_predict(X_new, vals[idx][var]) for var in range(N)] for idx in range(B)]
+
         # 결과를 3D 텐서로 변환
         lin_result = torch.stack([torch.stack(lin_result[idx], dim=0) for idx in range(B)], dim=0).to(self.device)
-        # lin_result = lin_result * 0.5
-
-        # 나머지도 
-        # for j in range(1, 5):
-        #    vals0 = [[self.linear_regression_direct(X_obj[j], x.permute(0,2,1)[idx, var , -self.seq_len//2**j:]) for var in range(N)] for idx in range(B)]
-        #    lin_result0 = [[self.linear_predict(X_new_obj[j], vals0[idx][var]) for var in range(N)] for idx in range(B)]
-        #    lin_result0 = torch.stack([torch.stack(lin_result0[idx], dim=0) for idx in range(B)], dim=0).to(self.device)
-        #    lin_result = lin_result + lin_result0*(2**(-j-1)) if j<4 else lin_result + lin_result0*(2**(-4))
 
         # 최종 출력
         x = lin_result
-        # x = lin_result*0.9 + trend_output*0.1
         return x.permute(0, 2, 1)
 
     def linear_regression_direct(self, X, y):

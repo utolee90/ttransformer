@@ -149,6 +149,7 @@ class Model(nn.Module):
 
         # Decomposition
         s_enc, t_enc = self.decomposition(x_enc)
+        x_enc_copy = x_enc.clone().detach().cpu().numpy()
         t_enc_copy = t_enc.clone().detach().cpu().numpy() # t_enc -> 
 
         # a0, a1 = self.train_linear_approximation(x_enc)
@@ -201,12 +202,12 @@ class Model(nn.Module):
         X = np.array([[t] for t in range(-self.seq_len, 0)]) # -seq_len ~-1
         X_new = np.array([[t] for t in range(self.seq_len)]) # -seq_len ~-1
 
-        vals = [[self.linear_regression_lstsq(X, t_enc_copy[idx, :, var]) for var in range(N)] for idx in range(B)]
+        vals = [[self.linear_regression_lstsq(X, x_enc_copy[idx, :, var]) for var in range(N)] for idx in range(B)]
         lin_result = [[self.linear_predict(X_new, vals[idx][var]) for var in range(N)] for idx in range(B)]
         # print(np.array(lin_result).shape)
         lin_result = torch.Tensor(np.array(lin_result)).to(self.device).permute(0, 2, 1)
 
-        t_dec_out = lin_result
+        # t_dec_out = lin_result
         # t_dec_out = 0.5 * t_dec_out + 0.49 * lin_result
         # t_dec_out = 0.001 * t_dec_out + 0.999 * lin_result
         # t_dec_out = t_dec_out + 0.2* lin_result
@@ -219,6 +220,7 @@ class Model(nn.Module):
 
         # dec_out = s_dec_out + t_dec_out
         dec_out = s_dec_out + t_dec_out
+        # dec_out = 0.8*dec_out + 0.2* lin_result
 
         return dec_out, t_dec_out, s_dec_out
 

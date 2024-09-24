@@ -25,10 +25,7 @@ python -u run.py \
   --c_out 8 \
   --batch_size 8\
   --des 'Exp' \
-  --moving_avg 101 \
-  --train_epochs 100 \
-  --patience 10 \
-  --itr 5 # > logs/LongForecasting/Exchange_RATE_$model_name'_'tester_$seq_len'_'$pred_len.log 
+  --moving_avg 101  # > logs/LongForecasting/Exchange_RATE_$model_name'_'tester_$seq_len'_'$pred_len.log 
 
   
 

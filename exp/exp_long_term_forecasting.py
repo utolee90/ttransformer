@@ -1,7 +1,7 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.tools import EarlyStopping, adjust_learning_rate, visual
-from utils.metrics import metric, SMAE, REC_CORR, RATIO_IRR, RATE_RATIO, STD_RATIO
+from utils.metrics import metric, SMAE, REC_CORR, RATIO_IRR, SLOPE_RATIO, STD_RATIO
 import torch
 import torch.nn as nn
 from torch import optim
@@ -12,6 +12,7 @@ import numpy as np
 from utils.dtw_metric import dtw,accelerated_dtw
 from utils.augmentation import run_augmentation,run_augmentation_single
 import json
+from utils.tools import linear_regression_direct, linear_predict
 
 warnings.filterwarnings('ignore')
 
@@ -166,6 +167,21 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                         f_dim = -1 if self.args.features == 'MS' else 0
                         outputs = outputs[:, -self.args.pred_len:, f_dim:]
                         batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                        # LinReg -> 모델을 선형으로 바구기 
+                        if self.args.model == "LinReg":
+                            B, N, L = batch_y.shape 
+                            # 시간 변수 생성
+                            X = np.array([[t] for t in range(-self.args.seq_len, 0)])  # X는 입력 feature, shape: [seq_len, 1]
+                            X_new = np.array([[t] for t in range(self.args.seq_len)])  # 예측을 위한 새로운 시간 변수
+                            
+                            # 각 배치와 변수에 대해 선형 회귀 해를 계산
+                            vals = [[linear_regression_direct(X, batch_y[idx, var , :]) for var in range(N)] for idx in range(B)]
+                            lin_result = [[linear_predict(X_new, vals[idx][var]) for var in range(N)] for idx in range(B)]
+
+                            # 결과를 3D 텐서로 변환
+                            batch_y = torch.stack([torch.stack(lin_result[idx], dim=0) for idx in range(B)], dim=0).to(self.device)
+                            
+
                         loss = criterion(outputs, batch_y)
                         train_loss.append(loss.item())
 
@@ -205,11 +221,6 @@ class Exp_Long_Term_Forecast(Exp_Basic):
 
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
-
-        if self.args.model == 'Piformer':
-            coeff_vector_collections = [vec.tolist() for vec in coeff_vector_collections]
-            with open(f'./coeff_vectors_val_{self.args.model_id}_{self.args.data}.json', 'w', encoding='utf8') as X:
-                json.dump(coeff_vector_collections, X)
 
         return self.model
 
@@ -313,17 +324,17 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             
 
         mae, mse, rmse, mape, mspe = metric(preds, trues)
-        smae, corr, mae_ratio, rate_ratio, std_ratio = SMAE(preds, trues), REC_CORR(preds, trues), RATIO_IRR(preds, trues), RATE_RATIO(preds, trues), STD_RATIO(preds, trues)
+        smae, corr, mae_ratio, slope_ratio, std_ratio = SMAE(preds, trues), REC_CORR(preds, trues), RATIO_IRR(preds, trues), SLOPE_RATIO(preds, trues), STD_RATIO(preds, trues)
 
-        print('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse, mae, dtw, smae, mae_ratio, corr, rate_ratio, std_ratio))
+        print('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse, mae, dtw, smae, mae_ratio, corr, slope_ratio, std_ratio))
         f = open("result_long_term_forecast.txt", 'a')
         f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse, mae, dtw, smae, mae_ratio, corr, rate_ratio, std_ratio))
+        f.write('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse, mae, dtw, smae, mae_ratio, corr, slope_ratio, std_ratio))
         f.write('\n')
         f.write('\n')
         f.close()
 
-        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, smae, mae_ratio, corr, rate_ratio, std_ratio]))
+        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, smae, mae_ratio, corr, slope_ratio, std_ratio]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
 

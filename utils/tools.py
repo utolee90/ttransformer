@@ -116,3 +116,54 @@ def adjustment(gt, pred):
 
 def cal_accuracy(y_pred, y_true):
     return np.mean(y_pred == y_true)
+
+# 선형 회귀 계산
+def linear_regression_direct(X, y, device=None):
+    """
+    선형 회귀 해를 행렬 곱셈으로 직접 계산합니다.
+    X: 입력 feature 행렬, shape: [seq_len, 1] 
+    y: 타겟 값, shape: [seq_len]
+    """
+    # Tensor
+
+    # X가 numpy array인 경우 텐서로 변환
+    # if isinstance(X, np.ndarray):
+    #    X = torch.tensor(X, dtype=torch.float32, requires_grad=True).to(device)
+    # if isinstance(y, np.ndarray):
+    #    y = torch.tensor(y, dtype=torch.float32, requires_grad=True).to(device)
+ 
+    # X에 bias term 추가 (ones column 추가)
+    X_b = torch.cat([torch.ones((X.shape[0], 1)), torch.tensor(X, dtype=torch.float32, requires_grad=True)], dim=1).to(device)
+    
+    # y를 텐서로 변환
+    y_torch = torch.tensor(y, dtype=torch.float32, requires_grad=True).to(device).unsqueeze(1)
+
+    # (X^T X) theta = X^T y 를 풀기 위해 solve() 사용
+    XTX = X_b.T @ X_b  # X^T X
+    XTy = X_b.T @ y_torch  # X^T y
+
+    # torch.linalg.solve()을 사용하여 해 구하기
+    theta_best = torch.linalg.solve(XTX, XTy)
+
+    # θ (bias, weight) 반환
+    return theta_best
+
+def linear_predict(X_new, theta_best, device=None):
+    """
+    새로운 입력 데이터 X_new에 대해 예측값을 계산합니다.
+    X_new: 새로운 input features, shape: [pred_len, 1]
+    theta_best: 학습된 선형 회귀 계수 (bias와 weight)
+    """
+    # X_new에 bias term 추가
+
+    # X가 numpy array인 경우 텐서로 변환
+    # if isinstance(X_new, np.ndarray):
+    #     X_new = torch.tensor(X_new, dtype=torch.float32, requires_grad=True).to(device)
+    # if isinstance(theta_best, np.ndarray):
+    #    theta_best = torch.tensor(theta_best, dtype=torch.float32, requires_grad=True).to(device)
+
+    X_new_b = torch.cat([torch.ones((X_new.shape[0], 1)), torch.tensor(X_new, dtype=torch.float32)], dim=1).to(device)
+
+    # θ (bias, weight)를 사용하여 예측값 계산
+    y_pred = X_new_b @ theta_best  # 행렬 곱셈
+    return y_pred.squeeze(1)  # 예측 결과를 반환
