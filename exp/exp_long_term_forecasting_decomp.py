@@ -1,7 +1,7 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.tools import EarlyStopping, adjust_learning_rate, visual
-from utils.metrics import metric, SMAE, REC_CORR, RATIO_IRR, RATE_RATIO, STD_RATIO
+from utils.metrics import metric, SMAE, REC_CORR, RATIO_IRR, STD_RATIO, SLOPE_RATIO
 import torch
 import torch.nn as nn
 from torch import optim
@@ -392,15 +392,15 @@ class Exp_Long_Term_Forecast_Decomp(Exp_Basic):
             
 
         mae, mse, rmse, mape, mspe = metric(preds, trues)
-        smae, corr, mae_ratio, rate_ratio, std_ratio  = SMAE(preds, trues), REC_CORR(preds, trues), RATIO_IRR(preds, trues), RATE_RATIO(preds, trues), STD_RATIO(preds, trues)
+        smae, corr, mae_ratio, rate_ratio, std_ratio  = SMAE(preds, trues), REC_CORR(preds, trues), RATIO_IRR(preds, trues), SLOPE_RATIO(preds, trues), STD_RATIO(preds, trues)
         print('mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse, mae, dtw, smae, mae_ratio, corr, rate_ratio, std_ratio))
         mae_t, mse_t, _, _, _ = metric(preds_trend, trues_trend)
         mae_s, mse_s, _, _, _ = metric(preds_seasonal, trues_seasonal)
         smae_t, corr_t, mae_ratio_t, rate_ratio_t, std_ratio_t = \
-            SMAE(preds_trend, trues_trend), REC_CORR(preds_trend, trues_trend), RATIO_IRR(preds_trend, trues_trend), RATE_RATIO(preds_trend, trues_trend), STD_RATIO(preds_trend, trues_trend)
+            SMAE(preds_trend, trues_trend), REC_CORR(preds_trend, trues_trend), RATIO_IRR(preds_trend, trues_trend), SLOPE_RATIO(preds_trend, trues_trend), STD_RATIO(preds_trend, trues_trend)
         print('(TREND) mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio{}, std_ratio:{}'.format(mse_t, mae_t, dtw, smae_t, mae_ratio_t, corr_t, rate_ratio_t, std_ratio_t))
         smae_s, corr_s, mae_ratio_s, rate_ratio_s, std_ratio_s = \
-            SMAE(preds_seasonal, trues_seasonal), REC_CORR(preds_seasonal, trues_seasonal), RATIO_IRR(preds_seasonal, trues_seasonal), RATE_RATIO(preds_seasonal, trues_seasonal), STD_RATIO(preds_seasonal, trues_seasonal)
+            SMAE(preds_seasonal, trues_seasonal), REC_CORR(preds_seasonal, trues_seasonal), RATIO_IRR(preds_seasonal, trues_seasonal), SLOPE_RATIO(preds_seasonal, trues_seasonal), STD_RATIO(preds_seasonal, trues_seasonal)
         print('(SEASONAL) mse:{}, mae:{}, dtw:{} smae:{}, irr_ratio(3):{}, corr:{}, rate_ratio:{}, std_ratio:{}'.format(mse_s, mae_s, dtw, smae_s, mae_ratio_s, corr_s, rate_ratio_s, std_ratio_s))
         f = open("result_long_term_forecast.txt", 'a')
         f.write(setting + "  \n")
