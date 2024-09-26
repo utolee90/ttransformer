@@ -104,34 +104,32 @@ def STD_RATIO(pred, true, flag='mean'):
         if flag in  ['mean', 'average', 'me', 'avg']:
             std_preds = np.array([np.std(pred[:, j]) for j in range(pred.shape[1])])
             std_trues = np.array([np.std(true[:, j]) for j in range(pred.shape[1])])
-            return np.nanmean(1/2* (std_trues / std_preds + std_pred/std_true)) # 참값/예측값 + 예측값/참값 표준편차 평균
+            return np.nanmean(1/2* (std_trues / std_preds + std_preds/std_trues)) # 참값/예측값 + 예측값/참값 표준편차 평균
         elif flag in ['median', 'med']:
             std_pred = np.array([np.std(pred[:, j]) for j in range(pred.shape[1])])
             std_true = np.array([np.std(true[:, j]) for j in range(pred.shape[1])])
-            return np.nanmedian(1/2* (std_true / std_pred + std_pred/std_true)) # 참값 대비 예측값 표준편차 평균
+            return np.nanmedian(1/2* (std_true / std_pred + std_preds/std_trues)) # 참값 대비 예측값 표준편차 평균
     elif pred.ndim == 3:
         if flag in  ['mean', 'average', 'me', 'avg']:
             std_pred = np.array([[np.std(pred[l, :, j]) for j in range(pred.shape[2])] for l in range(pred.shape[0])])
             std_true = np.array([[np.std(true[l, :, j]) for j in range(pred.shape[2])] for l in range(pred.shape[0])])
-            return np.nanmean(1/2*(std_true / std_pred + std_pred / std_true))
+            return np.nanmean(1/2*(std_true / std_pred + std_preds / std_trues))
         elif flag in  ['median', 'med']:
             std_pred = np.array([[np.std(pred[l, :, j]) for j in range(pred.shape[2])] for l in range(pred.shape[0])])
             std_true = np.array([[np.std(true[l, :, j]) for j in range(pred.shape[2])] for l in range(pred.shape[0])])
-            return np.nanmedian(1/2*(std_true / std_pred + std_pred / std_true))
+            return np.nanmedian(1/2*(std_true / std_pred + std_preds / std_trues))
     
     return None
 
 
 # 선형회귀 계수 구하기
 def get_slope(X, y):
-    # X와 y의 평균
-    x_mean = np.mean(X)
-    y_mean = np.mean(y)
+    # X에 bias term 추가 (1로 채워진 열을 맨 앞에 추가)
+    X_b = np.c_[np.ones((X.shape[0], 1)), X]  # [n_samples, n_features+1]
     
-    # 기울기 (slope) 계산
-    w = np.sum((X - x_mean) * (y - y_mean)) / np.sum((X - x_mean) ** 2)
-    
-    return w
+    # 선형 회귀 공식: θ = (X^T * X)^(-1) * X^T * y
+    theta_best = np.linalg.inv(X_b.T @ X_b) @ X_b.T @ y
+    return theta_best[1]
 
 # slope_ratio - mean
 def SLOPE_RATIO(pred, true, flag='mean'):
