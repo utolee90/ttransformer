@@ -179,14 +179,14 @@ parser.add_argument('--extra_tag', type=str, default="", help="Anything extra")
 parser.add_argument('--shuffle', type=int, default=1, help="Shuffle data when training")
 parser.add_argument('--base_model', type=str, default="iTransformer", help="Base Model Type")
 
-# 스크립트 4개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
+# 스크립트 2개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
 scripts_list = ["""--task_name long_term_forecast \
   --is_training 1 \
-  --root_path ./dataset/ETT-small/ \
-  --data_path ETTh1.csv \
-  --model_id ETTh1_96_96 \
-  --model DLinear \
-  --data ETTh1 \
+  --root_path ./dataset/exchange_rate/ \
+  --data_path exchange_rate.csv \
+  --model_id iTransformer_Exchange_96_96 \
+  --model $model_name \
+  --data custom \
   --features M \
   --seq_len 96 \
   --label_len 48 \
@@ -194,20 +194,22 @@ scripts_list = ["""--task_name long_term_forecast \
   --e_layers 2 \
   --d_layers 1 \
   --factor 3 \
-  --enc_in 7 \
-  --dec_in 7 \
-  --c_out 7 \
+  --enc_in 8 \
+  --dec_in 8 \
+  --c_out 8 \
+  --batch_size 8 \
+  --d_model 64\
+  --d_ff 128\
   --des 'Exp' \
-  --itr 1 \
-  --gpu 4""",
+  --itr 1 """,
 
 """--task_name long_term_forecast \
   --is_training 1 \
-  --root_path ./dataset/ETT-small/ \
-  --data_path ETTh1.csv \
-  --model_id ETTh1_96_192 \
-  --model DLinear \
-  --data ETTh1 \
+  --root_path ./dataset/exchange_rate/ \
+  --data_path exchange_rate.csv \
+  --model_id iTransformer_Exchange_96_192 \
+  --model $model_name \
+  --data custom \
   --features M \
   --seq_len 96 \
   --label_len 48 \
@@ -215,54 +217,16 @@ scripts_list = ["""--task_name long_term_forecast \
   --e_layers 2 \
   --d_layers 1 \
   --factor 3 \
-  --enc_in 7 \
-  --dec_in 7 \
-  --c_out 7 \
+  --enc_in 8 \
+  --dec_in 8 \
+  --c_out 8 \
+  --batch_size 8 \
+  --d_model 64\
+  --d_ff 128\
   --des 'Exp' \
-  --itr 1 \
-  --gpu 4""",
+  --itr 1""",
 
-"""--task_name long_term_forecast \
-  --is_training 1 \
-  --root_path ./dataset/ETT-small/ \
-  --data_path ETTh1.csv \
-  --model_id ETTh1_96_336 \
-  --model DLinear \
-  --data ETTh1 \
-  --features M \
-  --seq_len 96 \
-  --label_len 48 \
-  --pred_len 336 \
-  --e_layers 2 \
-  --d_layers 1 \
-  --factor 3 \
-  --enc_in 7 \
-  --dec_in 7 \
-  --c_out 7 \
-  --des 'Exp' \
-  --itr 1 \
-  --gpu 4""",
-
-"""--task_name long_term_forecast \
-  --is_training 1 \
-  --root_path ./dataset/ETT-small/ \
-  --data_path ETTh1.csv \
-  --model_id ETTh1_96_720 \
-  --model $model_name \
-  --data ETTh1 \
-  --features M \
-  --seq_len 96 \
-  --label_len 48 \
-  --pred_len 720 \
-  --e_layers 2 \
-  --d_layers 1 \
-  --factor 3 \
-  --enc_in 7 \
-  --dec_in 7 \
-  --c_out 7 \
-  --des 'Exp' \
-  --itr 1 \
-  --gpu 4"""]
+]
 
 args0 = parser.parse_args(scripts_list[0].split())
 args0.use_gpu = True if torch.cuda.is_available() and args0.use_gpu else False
@@ -273,8 +237,8 @@ if args0.use_gpu and args0.use_multi_gpu:
     args0.device_ids = [int(id_) for id_ in device_ids0]
     args0.gpu = args0.device_ids[0]
 
-print('Args in experiment:')
-print(args0)
+# print('Args in experiment:')
+# print(args0)
 
 args1 = parser.parse_args(scripts_list[1].split())
 args1.use_gpu = True if torch.cuda.is_available() and args1.use_gpu else False
@@ -285,45 +249,18 @@ if args1.use_gpu and args1.use_multi_gpu:
     args1.device_ids = [int(id_) for id_ in device_ids1]
     args1.gpu = args1.device_ids[0]
 
-print('Args in experiment:')
-print(args1)
+# print('Args in experiment:')
+# print(args1)
 
-args2 = parser.parse_args(scripts_list[2].split())
-args2.use_gpu = True if torch.cuda.is_available() and args2.use_gpu else False
 
-if args2.use_gpu and args2.use_multi_gpu:
-    args2.devices = args2.devices.replace(' ', '')
-    device_ids2 = args2.devices.split(',')
-    args2.device_ids = [int(id_) for id_ in device_ids2]
-    args2.gpu = args2.device_ids[0]
-
-print('Args in experiment:')
-print(args2)
-
-args3 = parser.parse_args(scripts_list[3].split())
-args3.use_gpu = True if torch.cuda.is_available() and args1.use_gpu else False
-
-if args3.use_gpu and args3.use_multi_gpu:
-    args1.devices = args3.devices.replace(' ', '')
-    device_ids3 = args3.devices.split(',')
-    args3.device_ids = [int(id_) for id_ in device_ids3]
-    args3.gpu = args3.device_ids[0]
-
-print('Args in experiment:')
-print(args3)
-
-# 스크립트 4개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
-etth_96_96_result = "long_term_forecast_ETTh1_96_96_Mod-DLinear_data-ETTh1.csv_(96to96)_0(1727353025)"
-etth_96_192_result = "long_term_forecast_ETTh1_96_192_Mod-DLinear_data-ETTh1.csv_(96to192)_0(1727353045)"
-etth_96_336_result = "long_term_forecast_ETTh1_96_336_Mod-DLinear_data-ETTh1.csv_(96to336)_0(1727353075)"
-etth_96_720_result = "long_term_forecast_ETTh1_96_720_Mod-DLinear_data-ETTh1.csv_(96to720)_0(1727353104)"
+# 스크립트 2개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
+exchange_96_96_result = "long_term_forecast_iTransformer_Exchange_96_96_Mod-iTransformer_data-exchange_rate.csv_(96to96)_0(1727353907)"
+exchange_96_192_result = "long_term_forecast_iTransformer_Exchange_96_192_Mod-iTransformer_data-exchange_rate.csv_(96to192)_0(1727354020)"
 
 # 변경해야 할 부분
 setting_pairs = [
     (etth_96_96_result, args0),
     (etth_96_192_result, args1),
-    (etth_96_336_result, args2),
-    (etth_96_720_result, args3)
 ]
 
 idx = 0 # 순서
