@@ -166,6 +166,7 @@ scripts/augmentation/
 run_anylearn.py
 environment.txt
 logs/
+run_ensenble_txt*
 
 # result
 aux_*.png
