@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=2
+#export CUDA_VISIBLE_DEVICES=2
 
 model_name=DLinear
 
@@ -21,7 +21,8 @@ python -u run.py \
   --dec_in 7 \
   --c_out 7 \
   --des 'Exp' \
-  --itr 1
+  --itr 1 \
+  --gpu 4
 
 python -u run.py \
   --task_name long_term_forecast \
@@ -42,7 +43,8 @@ python -u run.py \
   --dec_in 7 \
   --c_out 7 \
   --des 'Exp' \
-  --itr 1
+  --itr 1 \
+  --gpu 4
 
 python -u run.py \
   --task_name long_term_forecast \
@@ -63,7 +65,8 @@ python -u run.py \
   --dec_in 7 \
   --c_out 7 \
   --des 'Exp' \
-  --itr 1
+  --itr 1 \
+  --gpu 4
 
 python -u run.py \
   --task_name long_term_forecast \
@@ -84,4 +87,5 @@ python -u run.py \
   --dec_in 7 \
   --c_out 7 \
   --des 'Exp' \
-  --itr 1
+  --itr 1 \
+  --gpu 4

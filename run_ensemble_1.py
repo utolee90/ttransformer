@@ -142,7 +142,7 @@ parser.add_argument('--use_amp', action='store_true', help='use automatic mixed 
 
 # GPU
 parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
-parser.add_argument('--gpu', type=int, default=4, help='gpu')
+parser.add_argument('--gpu', type=int, default=0, help='gpu')
 parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
 parser.add_argument('--devices', type=str, default='0,1,2,3,4,5,6,7,8', help='device ids of multile gpus')
 
@@ -180,102 +180,89 @@ parser.add_argument('--shuffle', type=int, default=1, help="Shuffle data when tr
 parser.add_argument('--base_model', type=str, default="iTransformer", help="Base Model Type")
 
 # 스크립트 4개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
-scripts_list = ["""python -u run.py \
-  --task_name long_term_forecast \
+scripts_list = ["""--task_name long_term_forecast \
   --is_training 1 \
-  --root_path ./dataset/weather/ \
-  --data_path weather.csv \
-  --model_id iTransformer_weather_96_96 \
-  --model $model_name \
-  --data custom \
+  --root_path ./dataset/ETT-small/ \
+  --data_path ETTh1.csv \
+  --model_id ETTh1_96_96 \
+  --model DLinear \
+  --data ETTh1 \
   --features M \
   --seq_len 96 \
   --label_len 48 \
   --pred_len 96 \
-  --e_layers 3 \
+  --e_layers 2 \
   --d_layers 1 \
   --factor 3 \
-  --enc_in 21 \
-  --dec_in 21 \
-  --c_out 21 \
+  --enc_in 7 \
+  --dec_in 7 \
+  --c_out 7 \
   --des 'Exp' \
-  --batch_size 32 \
-  --d_model 64\
-  --d_ff 128\
-  --itr 1 """,
+  --itr 1 \
+  --gpu 4""",
 
-"""python -u run.py \
-  --task_name long_term_forecast \
+"""--task_name long_term_forecast \
   --is_training 1 \
-  --root_path ./dataset/weather/ \
-  --data_path weather.csv \
-  --model_id iTransformer_weather_96_192 \
-  --model $model_name \
-  --data custom \
+  --root_path ./dataset/ETT-small/ \
+  --data_path ETTh1.csv \
+  --model_id ETTh1_96_192 \
+  --model DLinear \
+  --data ETTh1 \
   --features M \
   --seq_len 96 \
   --label_len 48 \
   --pred_len 192 \
-  --e_layers 3 \
+  --e_layers 2 \
   --d_layers 1 \
   --factor 3 \
-  --enc_in 21 \
-  --dec_in 21 \
-  --c_out 21 \
+  --enc_in 7 \
+  --dec_in 7 \
+  --c_out 7 \
   --des 'Exp' \
-  --batch_size 32 \
-  --d_model 64\
-  --d_ff 128\
-  --itr 1 """,
-  
-"""python -u run.py \
-  --task_name long_term_forecast \
+  --itr 1 \
+  --gpu 4""",
+
+"""--task_name long_term_forecast \
   --is_training 1 \
-  --root_path ./dataset/weather/ \
-  --data_path weather.csv \
-  --model_id iTransformer_weather_96_336 \
-  --model $model_name \
-  --data custom \
+  --root_path ./dataset/ETT-small/ \
+  --data_path ETTh1.csv \
+  --model_id ETTh1_96_336 \
+  --model DLinear \
+  --data ETTh1 \
   --features M \
   --seq_len 96 \
   --label_len 48 \
   --pred_len 336 \
-  --e_layers 3 \
+  --e_layers 2 \
   --d_layers 1 \
   --factor 3 \
-  --enc_in 21 \
-  --dec_in 21 \
-  --c_out 21 \
+  --enc_in 7 \
+  --dec_in 7 \
+  --c_out 7 \
   --des 'Exp' \
-  --batch_size 32 \
-  --d_model 64\
-  --d_ff 128\
-  --itr 1 """,
-  
-"""python -u run.py \
-  --task_name long_term_forecast \
+  --itr 1 \
+  --gpu 4""",
+
+"""--task_name long_term_forecast \
   --is_training 1 \
-  --root_path ./dataset/weather/ \
-  --data_path weather.csv \
-  --model_id iTransformer_weather_96_720 \
+  --root_path ./dataset/ETT-small/ \
+  --data_path ETTh1.csv \
+  --model_id ETTh1_96_720 \
   --model $model_name \
-  --data custom \
+  --data ETTh1 \
   --features M \
   --seq_len 96 \
   --label_len 48 \
   --pred_len 720 \
-  --e_layers 3 \
+  --e_layers 2 \
   --d_layers 1 \
   --factor 3 \
-  --enc_in 21 \
-  --dec_in 21 \
-  --c_out 21 \
+  --enc_in 7 \
+  --dec_in 7 \
+  --c_out 7 \
   --des 'Exp' \
-  --batch_size 32 \
-  --d_model 64\
-  --d_ff 128\
-  --itr 1 
-"""]
+  --itr 1 \
+  --gpu 4"""]
 
 args0 = parser.parse_args(scripts_list[0].split())
 args0.use_gpu = True if torch.cuda.is_available() and args0.use_gpu else False
@@ -326,17 +313,17 @@ print('Args in experiment:')
 print(args3)
 
 # 스크립트 4개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
-weather_96_96_result = "long_term_forecast_iTransformer_weather_96_96_Mod-iTransformer_data-weather.csv_(96to96)_0(1727247965)"
-weather_96_192_result = "long_term_forecast_iTransformer_weather_96_192_Mod-iTransformer_data-weather.csv_(96to192)_0(1727250638)"
-weather_96_336_result = "long_term_forecast_iTransformer_weather_96_336_Mod-iTransformer_data-weather.csv_(96to336)_0(1727247965)"
-weather_96_720_result = "long_term_forecast_iTransformer_weather_96_720_Mod-iTransformer_data-weather.csv_(96to720)_0(1727250638)"
+etth_96_96_result = "long_term_forecast_ETTh1_96_96_Mod-DLinear_data-ETTh1.csv_(96to96)_0(1727353025)"
+etth_96_192_result = "long_term_forecast_ETTh1_96_192_Mod-DLinear_data-ETTh1.csv_(96to192)_0(1727353045)"
+etth_96_336_result = "long_term_forecast_ETTh1_96_336_Mod-DLinear_data-ETTh1.csv_(96to336)_0(1727353075)"
+etth_96_720_result = "long_term_forecast_ETTh1_96_720_Mod-DLinear_data-ETTh1.csv_(96to720)_0(1727353104)"
 
 # 변경해야 할 부분
 setting_pairs = [
-    (weather_96_96_result, args0),
-    (weather_96_192_result, args1),
-    (weather_96_336_result, args2),
-    (weather_96_720_result, args3)
+    (etth_96_96_result, args0),
+    (etth_96_192_result, args1),
+    (etth_96_336_result, args2),
+    (etth_96_720_result, args3)
 ]
 
 idx = 0 # 순서
@@ -344,14 +331,18 @@ setting_path = setting_pairs[idx][0]
 args = setting_pairs[idx][1]
 
 # 모델 호출 - Exp_Long_Term_Forecast - exchange_96_96
+device = torch.device("cuda:0")
 exp_model = Exp_Long_Term_Forecast(args)
+exp_model.model.to(device)
 exp_model._build_model()
-device = exp_model.device
+# device = exp_model.device
 
+# print(os.environ["CUDA_VISIBLE_DEVICES"], args.gpu, device)
 # 위의 argument와 맞는 모델 호출
 checkpoint_path = './checkpoints/'
 model_path = f"{checkpoint_path}{setting_path}/checkpoint.pth"
-exp_model.model.load_state_dict(torch.load(model_path), strict=False).to(args.device)
+model = torch.load(model_path, map_location="cuda:0")  # 0번 GPU로 매핑
+exp_model.model.load_state_dict(model, strict=False)
 
 # data_provider -> Exchange_rate
 dataset_exchange_96 = Dataset_Custom(args, args.root_path,
@@ -610,7 +601,7 @@ np_pred_lin_24 = torch.stack([torch.stack(lin_result2[idx], dim=0) for idx in ra
 final_res = a*np_pred + b* np_pred_lin + (1-a-b)*np_pred_lin_24
 
 # 메트릭 비교하기 (원본 iTransformer)
-with open(f'run_ensenble_txt{time.time()}.txt', 'w', encoding='utf8') as A:
+with open(f'run_ensenble_txt_{setting_path}_{time.time()}.txt', 'w', encoding='utf8') as A:
     wr = "TRAIN_PRED\n"
     wr += f"{MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), REC_CORR(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)} \n"
     wr += "TRAIN_ENSEMBLE_PRED\n"
@@ -620,6 +611,7 @@ with open(f'run_ensenble_txt{time.time()}.txt', 'w', encoding='utf8') as A:
     wr += f"{MSE(np_pred_lin, np_true), MAE(np_pred_lin, np_true), SMAE(np_pred_lin, np_true), REC_CORR(np_pred_lin, np_true), STD_RATIO(np_pred_lin, np_true), SLOPE_RATIO(np_pred_lin, np_true)}\n"
     wr += "TRAIN_PRED_LINEAR_24\n"
     wr += f"{MSE(np_pred_lin_24, np_true), MAE(np_pred_lin_24, np_true), SMAE(np_pred_lin_24, np_true), REC_CORR(np_pred_lin_24, np_true), STD_RATIO(np_pred_lin_24, np_true), SLOPE_RATIO(np_pred_lin_24, np_true)}\n"
+    A.write(wr)
 
 # 메트릭 저장
 metric_path = f"./results/{setting_path}/"
