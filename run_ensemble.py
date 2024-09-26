@@ -180,13 +180,12 @@ parser.add_argument('--shuffle', type=int, default=1, help="Shuffle data when tr
 parser.add_argument('--base_model', type=str, default="iTransformer", help="Base Model Type")
 
 # 스크립트 4개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
-scripts_list = ["""python -u run.py \
-  --task_name long_term_forecast \
+scripts_list = ["""--task_name long_term_forecast \
   --is_training 1 \
   --root_path ./dataset/weather/ \
   --data_path weather.csv \
   --model_id iTransformer_weather_96_96 \
-  --model $model_name \
+  --model iTransformer \
   --data custom \
   --features M \
   --seq_len 96 \
@@ -204,13 +203,12 @@ scripts_list = ["""python -u run.py \
   --d_ff 128\
   --itr 1 """,
 
-"""python -u run.py \
-  --task_name long_term_forecast \
+"""--task_name long_term_forecast \
   --is_training 1 \
   --root_path ./dataset/weather/ \
   --data_path weather.csv \
   --model_id iTransformer_weather_96_192 \
-  --model $model_name \
+  --model iTransformer \
   --data custom \
   --features M \
   --seq_len 96 \
@@ -228,13 +226,12 @@ scripts_list = ["""python -u run.py \
   --d_ff 128\
   --itr 1 """,
   
-"""python -u run.py \
-  --task_name long_term_forecast \
+"""--task_name long_term_forecast \
   --is_training 1 \
   --root_path ./dataset/weather/ \
   --data_path weather.csv \
   --model_id iTransformer_weather_96_336 \
-  --model $model_name \
+  --model iTransformer \
   --data custom \
   --features M \
   --seq_len 96 \
@@ -252,13 +249,12 @@ scripts_list = ["""python -u run.py \
   --d_ff 128\
   --itr 1 """,
   
-"""python -u run.py \
-  --task_name long_term_forecast \
+"""--task_name long_term_forecast \
   --is_training 1 \
   --root_path ./dataset/weather/ \
   --data_path weather.csv \
   --model_id iTransformer_weather_96_720 \
-  --model $model_name \
+  --model iTransformer \
   --data custom \
   --features M \
   --seq_len 96 \
@@ -326,10 +322,10 @@ print('Args in experiment:')
 print(args3)
 
 # 스크립트 4개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
-weather_96_96_result = "long_term_forecast_iTransformer_weather_96_96_Mod-iTransformer_data-weather.csv_(96to96)_0(1727247965)"
-weather_96_192_result = "long_term_forecast_iTransformer_weather_96_192_Mod-iTransformer_data-weather.csv_(96to192)_0(1727250638)"
-weather_96_336_result = "long_term_forecast_iTransformer_weather_96_336_Mod-iTransformer_data-weather.csv_(96to336)_0(1727247965)"
-weather_96_720_result = "long_term_forecast_iTransformer_weather_96_720_Mod-iTransformer_data-weather.csv_(96to720)_0(1727250638)"
+weather_96_96_result = "long_term_forecast_iTransformer_weather_96_96_Mod-iTransformer_data-weather.csv_(96to96)_0(1727354116)"
+weather_96_192_result = "long_term_forecast_iTransformer_weather_96_192_Mod-iTransformer_data-weather.csv_(96to192)_0(1727354589)"
+weather_96_336_result = "long_term_forecast_iTransformer_weather_96_336_Mod-iTransformer_data-weather.csv_(96to336)_0(1727355118)"
+weather_96_720_result = "long_term_forecast_iTransformer_weather_96_720_Mod-iTransformer_data-weather.csv_(96to720)_0(1727355677)"
 
 # 변경해야 할 부분
 setting_pairs = [
@@ -351,7 +347,8 @@ device = exp_model.device
 # 위의 argument와 맞는 모델 호출
 checkpoint_path = './checkpoints/'
 model_path = f"{checkpoint_path}{setting_path}/checkpoint.pth"
-exp_model.model.load_state_dict(torch.load(model_path), strict=False).to(args.device)
+model = torch.load(model_path, map_location="cuda:0")  # 0번 GPU로 매핑
+exp_model.model.load_state_dict(model, strict=False)
 
 # data_provider -> Exchange_rate
 dataset_exchange_96 = Dataset_Custom(args, args.root_path,
