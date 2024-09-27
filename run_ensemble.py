@@ -194,7 +194,7 @@ setting_pairs = [
 
 idx = 0 # 순서
 
-for idx in range(1):
+for idx in range(4):
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
     
@@ -468,7 +468,7 @@ for idx in range(1):
         # 이제 계산도 한다
         # 각 배치와 변수에 대해 선형 회귀 해를 계산
         B, L, N = np_pred.shape  # L은 시퀀스 길이(seq_len)
-        vals = [[linear_regression_direct(X[-reg_size:], dataset_input_test[idx][0][:, var]) for var in range(N)] for idx in range(B)]
+        vals = [[linear_regression_direct(X[-reg_size:], dataset_input_test[idx][0][-reg_size:, var]) for var in range(N)] for idx in range(B)]
         lin_result = [[linear_predict(X_new, vals[idx][var]) for var in range(N)] for idx in range(B)]
         # 결과를 numpy 모듈로 변경
         np_pred_lin = torch.stack([torch.stack(lin_result[idx], dim=0) for idx in range(B)], dim=0).to(device).permute(0,2,1).detach().cpu().numpy()
