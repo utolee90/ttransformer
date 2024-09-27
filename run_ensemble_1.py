@@ -27,164 +27,21 @@ from data_provider.data_loader import Dataset_Custom
 # 모델 훈련셋 결과 확인하기
 from torch.utils.data import DataLoader
 
+# 파서 불러오기
+from commons.parser_write import parser
+
 # fix random seed
 fix_seed = 2021
 random.seed(fix_seed)
 torch.manual_seed(fix_seed)
 np.random.seed(fix_seed)
-parser = argparse.ArgumentParser(description='TimesNet')
-
-# config 지정 -> 오류 방지를 위해 
-
-# basic config
-parser.add_argument('--task_name', type=str, default='long_term_forecast',
-                    help='task name, options:[long_term_forecast, short_term_forecast, imputation, classification, anomaly_detection]')
-parser.add_argument('--is_training', type=int, default=1, help='status')
-parser.add_argument('--model_id', type=str, default='test', help='model id')
-parser.add_argument('--model', type=str, default='Autoformer',
-                    help='model name, options: [Autoformer, Transformer, TimesNet]')
-
-# data loader
-parser.add_argument('--data', type=str, default='ETTm1', help='dataset type')
-parser.add_argument('--root_path', type=str, default='./data/ETT/', help='root path of the data file')
-parser.add_argument('--data_path', type=str, default='ETTh1.csv', help='data file')
-parser.add_argument('--features', type=str, default='M',
-                    help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
-parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
-parser.add_argument('--freq', type=str, default='h',
-                    help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
-parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
-
-# added option 
-parser.add_argument('--train_ratio', type=float, default=0.7, help='train data ratio')
-parser.add_argument('--test_ratio', type=float, default=0.2, help='test data ratio')
-parser.add_argument('--train_step', type=float, default=1.0, help='train data with certain stes. for example train_step=2 means only train even number of data')
-
-# SparseTSF
-parser.add_argument('--period_len', type=int, default=24, help='period length')
-
-# PITS
-parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
-parser.add_argument('--head_dropout', type=float, default=0.0, help='head dropout')
-parser.add_argument('--patch_len', type=int, default=16, help='patch length')
-parser.add_argument('--stride', type=int, default=8, help='stride')
-parser.add_argument('--shared_embedding', type=int, default=1, help='stride')
-parser.add_argument('--padding_patch', default='end', help='None: None; end: padding on the end')
-parser.add_argument('--revin', type=int, default=1, help='RevIN; True 1 False 0')
-parser.add_argument('--affine', type=int, default=0, help='RevIN-affine; True 1 False 0')
-parser.add_argument('--subtract_last', type=int, default=0, help='0: subtract mean; 1: subtract last')
-parser.add_argument('--decomposition', type=int, default=0, help='decomposition; True 1 False 0')
-parser.add_argument('--kernel_size', type=int, default=25, help='decomposition-kernel')
-parser.add_argument('--individual', type=int, default=0, help='individual head; True 1 False 0')
-
-# Piformer
-parser.add_argument('--joint_var', type=int, default=0, help='use attention for each patching; True 1 False 0')
-
-# forecasting task
-parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
-parser.add_argument('--label_len', type=int, default=48, help='start token length')
-parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
-parser.add_argument('--seasonal_patterns', type=str, default='Monthly', help='subset for M4')
-parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
-
-# inputation task
-parser.add_argument('--mask_rate', type=float, default=0.25, help='mask ratio')
-
-# anomaly detection task
-parser.add_argument('--anomaly_ratio', type=float, default=0.25, help='prior anomaly ratio (%)')
-
-# model define
-parser.add_argument('--expand', type=int, default=2, help='expansion factor for Mamba')
-parser.add_argument('--d_conv', type=int, default=4, help='conv kernel size for Mamba')
-parser.add_argument('--top_k', type=int, default=5, help='for TimesBlock')
-parser.add_argument('--num_kernels', type=int, default=6, help='for Inception')
-parser.add_argument('--enc_in', type=int, default=7, help='encoder input size')
-parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
-parser.add_argument('--c_out', type=int, default=7, help='output size')
-parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
-parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
-parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
-parser.add_argument('--d_layers', type=int, default=1, help='num of decoder layers')
-parser.add_argument('--d_ff', type=int, default=2048, help='dimension of fcn')
-parser.add_argument('--moving_avg', type=int, default=25, help='window size of moving average')
-parser.add_argument('--factor', type=int, default=1, help='attn factor')
-parser.add_argument('--distil', action='store_false',
-                    help='whether to use distilling in encoder, using this argument means not using distilling',
-                    default=True)
-parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
-parser.add_argument('--embed', type=str, default='timeF',
-                    help='time features encoding, options:[timeF, fixed, learned]')
-parser.add_argument('--activation', type=str, default='gelu', help='activation')
-parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
-parser.add_argument('--channel_independence', type=int, default=1,
-                    help='0: channel dependence 1: channel independence for FreTS model')
-parser.add_argument('--decomp_method', type=str, default='moving_avg',
-                    help='method of series decompsition, only support moving_avg or dft_decomp')
-parser.add_argument('--use_norm', type=int, default=1, help='whether to use normalize; True 1 False 0')
-parser.add_argument('--down_sampling_layers', type=int, default=0, help='num of down sampling layers')
-parser.add_argument('--down_sampling_window', type=int, default=1, help='down sampling window size')
-parser.add_argument('--down_sampling_method', type=str, default=None,
-                    help='down sampling method, only support avg, max, conv')
-parser.add_argument('--seg_len', type=int, default=48,
-                    help='the length of segmen-wise iteration of SegRNN')
-
-# optimization
-parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
-parser.add_argument('--itr', type=int, default=1, help='experiments times')
-parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
-parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
-parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
-parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
-parser.add_argument('--des', type=str, default='test', help='exp description')
-parser.add_argument('--loss', type=str, default='MSE', help='loss function')
-parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
-parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
-
-# GPU
-parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
-parser.add_argument('--gpu', type=int, default=0, help='gpu')
-parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
-parser.add_argument('--devices', type=str, default='0,1,2,3,4,5,6,7,8', help='device ids of multile gpus')
-
-# de-stationary projector params
-parser.add_argument('--p_hidden_dims', type=int, nargs='+', default=[128, 128],
-                    help='hidden layer dimensions of projector (List)')
-parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
-
-# metrics (dtw)
-parser.add_argument('--use_dtw', type=bool, default=False, 
-                    help='the controller of using dtw metric (dtw is time consuming, not suggested unless necessary)')
-
-# Augmentation
-parser.add_argument('--augmentation_ratio', type=int, default=0, help="How many times to augment")
-parser.add_argument('--seed', type=int, default=2, help="Randomization seed")
-parser.add_argument('--jitter', default=False, action="store_true", help="Jitter preset augmentation")
-parser.add_argument('--scaling', default=False, action="store_true", help="Scaling preset augmentation")
-parser.add_argument('--permutation', default=False, action="store_true", help="Equal Length Permutation preset augmentation")
-parser.add_argument('--randompermutation', default=False, action="store_true", help="Random Length Permutation preset augmentation")
-parser.add_argument('--magwarp', default=False, action="store_true", help="Magnitude warp preset augmentation")
-parser.add_argument('--timewarp', default=False, action="store_true", help="Time warp preset augmentation")
-parser.add_argument('--windowslice', default=False, action="store_true", help="Window slice preset augmentation")
-parser.add_argument('--windowwarp', default=False, action="store_true", help="Window warp preset augmentation")
-parser.add_argument('--rotation', default=False, action="store_true", help="Rotation preset augmentation")
-parser.add_argument('--spawner', default=False, action="store_true", help="SPAWNER preset augmentation")
-parser.add_argument('--dtwwarp', default=False, action="store_true", help="DTW warp preset augmentation")
-parser.add_argument('--shapedtwwarp', default=False, action="store_true", help="Shape DTW warp preset augmentation")
-parser.add_argument('--wdba', default=False, action="store_true", help="Weighted DBA preset augmentation")
-parser.add_argument('--discdtw', default=False, action="store_true", help="Discrimitive DTW warp preset augmentation")
-parser.add_argument('--discsdtw', default=False, action="store_true", help="Discrimitive shapeDTW warp preset augmentation")
-parser.add_argument('--extra_tag', type=str, default="", help="Anything extra")
-
-#piformer
-parser.add_argument('--shuffle', type=int, default=1, help="Shuffle data when training")
-parser.add_argument('--base_model', type=str, default="iTransformer", help="Base Model Type")
 
 # 스크립트 2개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
 scripts_list = ["""--task_name long_term_forecast \
   --is_training 1 \
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate.csv \
-  --model_id iTransformer_Exchange_96_96 \
+  --model_id iTransformer_input_96 \
   --model $model_name \
   --data custom \
   --features M \
@@ -207,7 +64,7 @@ scripts_list = ["""--task_name long_term_forecast \
   --is_training 1 \
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate.csv \
-  --model_id iTransformer_Exchange_96_192 \
+  --model_id iTransformer_input_192 \
   --model $model_name \
   --data custom \
   --features M \
@@ -237,8 +94,6 @@ if args0.use_gpu and args0.use_multi_gpu:
     args0.device_ids = [int(id_) for id_ in device_ids0]
     args0.gpu = args0.device_ids[0]
 
-# print('Args in experiment:')
-# print(args0)
 
 args1 = parser.parse_args(scripts_list[1].split())
 args1.use_gpu = True if torch.cuda.is_available() and args1.use_gpu else False
@@ -249,13 +104,9 @@ if args1.use_gpu and args1.use_multi_gpu:
     args1.device_ids = [int(id_) for id_ in device_ids1]
     args1.gpu = args1.device_ids[0]
 
-# print('Args in experiment:')
-# print(args1)
-
-
 # 스크립트 2개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
-exchange_96_96_result = "long_term_forecast_iTransformer_Exchange_96_96_Mod-iTransformer_data-exchange_rate.csv_(96to96)_0(1727353907)"
-exchange_96_192_result = "long_term_forecast_iTransformer_Exchange_96_192_Mod-iTransformer_data-exchange_rate.csv_(96to192)_0(1727354020)"
+exchange_96_96_result = "long_term_forecast_iTransformer_input_96_Mod-iTransformer_data-exchange_rate.csv_(96to96)_0(1727353907)"
+exchange_96_192_result = "long_term_forecast_iTransformer_input_192_Mod-iTransformer_data-exchange_rate.csv_(96to192)_0(1727354020)"
 
 # 변경해야 할 부분
 setting_pairs = [
@@ -282,40 +133,35 @@ model = torch.load(model_path, map_location="cuda:0")  # 0번 GPU로 매핑
 exp_model.model.load_state_dict(model, strict=False)
 
 # data_provider -> Exchange_rate
-dataset_exchange_96 = Dataset_Custom(args, args.root_path,
-                                    flag='train', size=(args.seq_len, args.label_len, args.pred_len),
-                                    features='M', data_path = args.data_path,
-                                    target='OT', scale=True, freq='h', timeenc=0,
-                                    seasonal_patterns=None, train_ratio=args.train_ratio, test_ratio=args.test_ratio)
-dataset_exchange_96_valid = Dataset_Custom(args, args.root_path,
-                                    flag='val', size=(args.seq_len, args.label_len, args.pred_len),
-                                    features='M', data_path = args.data_path,
-                                    target='OT', scale=True, freq='h', timeenc=0,
-                                    seasonal_patterns=None, train_ratio=args.train_ratio, test_ratio=args.test_ratio)
-dataset_exchange_96_test = Dataset_Custom(args, args.root_path,
-                                    flag='test', size=(args.seq_len, args.label_len, args.pred_len),
-                                    features='M', data_path = args.data_path,
-                                    target='OT', scale=True, freq='h', timeenc=0,
-                                    seasonal_patterns=None, train_ratio=args.train_ratio, test_ratio=args.test_ratio)
+dataset_input = Dataset_Custom(args, args.root_path,
+                    flag='train', size=(args.seq_len, args.label_len, args.pred_len),
+                    features='M', data_path = args.data_path,
+                    target='OT', scale=True, freq='h', timeenc=0,
+                    seasonal_patterns=None, train_ratio=args.train_ratio, test_ratio=args.test_ratio)
+dataset_input_test = Dataset_Custom(args, args.root_path,
+                    flag='test', size=(args.seq_len, args.label_len, args.pred_len),
+                    features='M', data_path = args.data_path,
+                    target='OT', scale=True, freq='h', timeenc=0,
+                    seasonal_patterns=None, train_ratio=args.train_ratio, test_ratio=args.test_ratio)
 
 exp_model.model.eval()
 
 
 
-dataset_exchange_96_loader = DataLoader(
-            dataset_exchange_96,
+dataset_input_loader = DataLoader(
+            dataset_input,
             batch_size=args.batch_size,
             shuffle=True,
             num_workers=args.num_workers,
             drop_last=False)
-dataset_exchange_96_test_loader = DataLoader(
-            dataset_exchange_96_test,
+dataset_input_test_loader = DataLoader(
+            dataset_input_test,
             batch_size=1, # 모든 데이터셋을 확인해야 해서 batch_size를 강제로 1로 조정.
             shuffle=False,
             num_workers=args.num_workers,
             drop_last=False)
-dataset_exchange_96_valid_loader = DataLoader(
-            dataset_exchange_96_valid,
+dataset_input_valid_loader = DataLoader(
+            dataset_input_valid,
             batch_size=1, # 모든 데이터셋을 확인해야 해서 batch_size를 강제로 1로 조정.
             shuffle=False,
             num_workers=args.num_workers,
@@ -381,7 +227,7 @@ trues_te_tr = [] # 참값
 preds_te_lin = [] # 96_lin
 preds_te_lin_24 = [] # 24_lin
 
-for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataset_exchange_96_loader):
+for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataset_input_loader):
     batch_x = batch_x.float().to(device)
     batch_y = batch_y.float().to(device)
 
@@ -471,7 +317,7 @@ for epoch in range(num_epochs):
     path = os.path.join(args.checkpoints, setting_path)
     if not os.path.exists(path):
         os.makedirs(path)
-    for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataset_exchange_96_loader):
+    for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataset_input_loader):
         cnt += 1
         batch_x = batch_x.float().to(device)
         batch_y = batch_y.float().to(device)
@@ -489,7 +335,7 @@ for epoch in range(num_epochs):
     print()
     train_loss = [v.item() for v in train_loss]
     train_loss = np.average(train_loss)
-    vali_loss = vali(dataset_exchange_96_test, dataset_exchange_96_test_loader, criterion)
+    vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
     print("vali_loss:", vali_loss)
     print()
     print(combine_model_test.a, combine_model_test.b)
@@ -524,12 +370,12 @@ np_true = np.load(f"{result_path}{setting_path}/{result_list[1]}")
 # 이제 계산도 한다
 # 각 배치와 변수에 대해 선형 회귀 해를 계산
 B, L, N = np_pred.shape  # L은 시퀀스 길이(seq_len)
-vals = [[linear_regression_direct(X, dataset_exchange_96_test[idx][0][:, var]) for var in range(N)] for idx in range(B)]
+vals = [[linear_regression_direct(X, dataset_input_test[idx][0][:, var]) for var in range(N)] for idx in range(B)]
 lin_result = [[linear_predict(X_new, vals[idx][var]) for var in range(N)] for idx in range(B)]
 # 결과를 numpy 모듈로 변경
 np_pred_lin = torch.stack([torch.stack(lin_result[idx], dim=0) for idx in range(B)], dim=0).to(device).permute(0,2,1).detach().cpu().numpy()
 
-vals2 = [[linear_regression_direct(X[-24:], dataset_exchange_96_test[idx][0][-24:, var], ) for var in range(N)] for idx in range(B)]
+vals2 = [[linear_regression_direct(X[-24:], dataset_input_test[idx][0][-24:, var], ) for var in range(N)] for idx in range(B)]
 lin_result2 = [[linear_predict(X_new, vals2[idx][var]) for var in range(N)] for idx in range(B)]
 # 결과를 numpy 모듈로 변경
 np_pred_lin_24 = torch.stack([torch.stack(lin_result2[idx], dim=0) for idx in range(B)], dim=0).to(device).permute(0,2,1).detach().cpu().numpy()
