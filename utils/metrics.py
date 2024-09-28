@@ -147,15 +147,15 @@ def SLOPE_RATIO(pred, true, flag='mean'):
         rate_pred = np.array([get_slope(X, pred[:, j]) for j in range(pred.shape[1])])
         rate_true = np.array([get_slope(X, true[:, j])  for j in range(pred.shape[1])])
         if flag in  ['mean', 'average', 'me', 'avg']:
-            return len(X) * np.mean(np.abs(rate_true - rate_pred))# 참값 대비 예측값 기울기 평균
+            return (len(X)-1) * np.mean(np.abs(rate_true - rate_pred))# 참값 대비 예측값 기울기 평균
         elif flag in ['median', 'med']:
-            return len(X) * np.median(np.abs(rate_true - rate_pred)) # 참값 대비 예측값 기울기 중간값
+            return (len(X)-1) * np.median(np.abs(rate_true - rate_pred)) # 참값 대비 예측값 기울기 중간값
     elif pred.ndim == 3:
         rate_pred = np.array([[get_slope(X, pred[l, :, j]) for j in range(pred.shape[2])] for l in range(pred.shape[0])])
         rate_true = np.array([[get_slope(X, true[l, :, j]) for j in range(pred.shape[2])] for l in range(pred.shape[0])])
         if flag in  ['mean', 'average', 'me', 'avg']:
-            return len(X)*np.mean(np.abs(rate_true - rate_pred))
+            return (len(X)-1)*np.mean(np.abs(rate_true - rate_pred))
         elif flag in  ['median', 'med']:
-            return len(X)*np.median(np.abs(rate_true - rate_pred))
+            return (len(X)-1)*np.median(np.abs(rate_true - rate_pred))
      
     return None
