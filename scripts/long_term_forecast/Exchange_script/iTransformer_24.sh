@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=0
+# export CUDA_VISIBLE_DEVICES=0
 
 model_name=iTransformer
 
@@ -24,6 +24,7 @@ python -u run.py \
   --c_out 8 \
   --batch_size 8\
   --des 'Exp' \
+  # --gpu 1 \
   --itr 1 # > logs/LongForecasting/Exchange_RATE_$model_name'_'tester_$seq_len'_'$pred_len.log 
 
   

@@ -30,7 +30,7 @@ from torch.utils.data import DataLoader
 # 파서 불러오기
 from commons.parser_write import parser
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
 # fix random seed
 fix_seed = 2021
@@ -197,15 +197,15 @@ setting_pairs = [
 
 idx = 0 # 순서
 print("START2")
-for idx in range(4):
+for idx in range(1):
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
-    args.gpu = 3
+    args.gpu = 4
     
     # 모델 호출 - Exp_Long_Term_Forecast - exchange_96_96
     exp_model = Exp_Long_Term_Forecast(args)
     exp_model._build_model()
-    device = torch.device("cuda:3")
+    device = torch.device("cuda:4")
     exp_model.model.device = device
     print(exp_model.model.device)
     
@@ -380,7 +380,9 @@ for idx in range(4):
     
     # 모델 실험
     num_epochs = 5
-    combine_model_test = CombinedModel(res_iTransformer, get_res_lin(24), get_res_lin(48))
+    combine_model_test = CombinedModel(res_iTransformer, get_res_lin(24), get_res_lin(96))
+    combine_model_test.a = torch.ones(1, device=device)* 0.95
+    combine_model_test.b = torch.ones(1, device=device)*0.025
     # combine_model_test training
     combine_model_test.train()
     
@@ -462,7 +464,8 @@ for idx in range(4):
     end_time = time.time()
     print(f"Find Coefficients process done. Spent :{end_time - start_time}")
 
-    
+    print(f"loss")
+    print(f"{loss_points}")
     # 실제 데이터 셋 호출
     result_list = ['pred.npy', 'true.npy']
     result_path = './results/'
@@ -488,13 +491,13 @@ for idx in range(4):
     # lin_result = [[linear_predict(X_new, vals[idx][var]) for var in range(N)] for idx in range(B)]
     # 결과를 numpy 모듈로 변경
     # np_pred_lin = torch.stack([torch.stack(lin_result[idx], dim=0) for idx in range(B)], dim=0).to(device).permute(0,2,1).detach().cpu().numpy()
-    np_pred_lin = get_np_pred_lin(np_pred, 96)
+    np_pred_lin_24 = get_np_pred_lin(np_pred, 24)
     
     # vals2 = [[linear_regression_direct(X[-24:], dataset_input_test[idx][0][-24:, var], ) for var in range(N)] for idx in range(B)]
     # lin_result2 = [[linear_predict(X_new, vals2[idx][var]) for var in range(N)] for idx in range(B)]
     # 결과를 numpy 모듈로 변경
     # np_pred_lin_24 = torch.stack([torch.stack(lin_result2[idx], dim=0) for idx in range(B)], dim=0).to(device).permute(0,2,1).detach().cpu().numpy()
-    np_pred_lin_24 = get_np_pred_lin(np_pred, 24)
+    np_pred_lin = get_np_pred_lin(np_pred, 96)
     
     
     # loss_points에서 수집한 도트들을 비교 -> 최소 MSE, 최소 MAE 검색, 최소 SMAE 검색
@@ -522,7 +525,7 @@ for idx in range(4):
     # a, b, = combine_model_test.a[0].item(), combine_model_test.b[0].item(),
     
     # 마지막으로 비교
-    final_res = a*np_pred + b* np_pred_lin + (1-a-b)*np_pred_lin_24
+    final_res = a*np_pred + b* np_pred_lin_24 + (1-a-b)*np_pred_lin
     
     # 메트릭 비교하기 (원본 iTransformer)
     with open(f'run_ensenble_txt{time.time()}.txt', 'w', encoding='utf8') as A:
@@ -537,14 +540,22 @@ for idx in range(4):
         wr += f"{MSE(np_pred_lin_24, np_true), MAE(np_pred_lin_24, np_true), SMAE(np_pred_lin_24, np_true), REC_CORR(np_pred_lin_24, np_true), STD_RATIO(np_pred_lin_24, np_true), SLOPE_RATIO(np_pred_lin_24, np_true)}\n"
         A.write(wr)
     
+    with open(f"coefficient_storing_{time.time()}", 'w', encoding='utf8') as B:
+        wr = "TEST\n"
+        for pair in loss_points:
+            wr += f"{pair}\n"
+        wr += f"Selected coeff : {a, b}"
+        wr += "END\n\n"
+        B.write(wr)
+    
     # 메트릭 저장
     metric_path = f"./results/{setting_path}/"
     metric_ensemble = [MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), REC_CORR(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)]
     metric_lin = [MSE(np_pred_lin, np_true), MAE(np_pred_lin, np_true), SMAE(np_pred_lin, np_true), REC_CORR(np_pred_lin, np_true), STD_RATIO(np_pred_lin, np_true), SLOPE_RATIO(np_pred_lin, np_true)]
-    np.save(metric_path + "metrics_ensemble.npy", metric_ensemble)
-    np.save(metric_path + "metrics_lin.npy", metric_lin)
-    np.save(metric_path + "pred_ensemble.npy", final_res)
-    np.save(metric_path + "pred_lin.npy", np_pred_lin)
-    np.save(metric_path + "pred_lin24.npy", np_pred_lin_24)
+    np.save(metric_path + "metrics_ensemble_2.npy", metric_ensemble)
+    np.save(metric_path + "metrics_lin_2.npy", metric_lin)
+    np.save(metric_path + "pred_ensemble_2.npy", final_res)
+    np.save(metric_path + "pred_lin_2.npy", np_pred_lin)
+    np.save(metric_path + "pred_lin_24_2.npy", np_pred_lin_24)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "4"
