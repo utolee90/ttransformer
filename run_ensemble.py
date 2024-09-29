@@ -28,7 +28,7 @@ from data_provider.data_loader import Dataset_Custom
 from torch.utils.data import DataLoader
 
 # 파서 불러오기
-from commons.parser_write import parser
+from commons.parser_write import *
 
 # fix random seed
 fix_seed = 2021
@@ -36,8 +36,104 @@ random.seed(fix_seed)
 torch.manual_seed(fix_seed)
 np.random.seed(fix_seed)
 
-# 스크립트 4개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
-scripts_list = ["""--task_name long_term_forecast \
+# 스크립트 8개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
+
+
+scripts_list = [
+"""--task_name long_term_forecast \
+  --is_training 1 \
+  --root_path ./dataset/exchange_rate/ \
+  --data_path exchange_rate.csv \
+  --model_id iTransformer_Exchange_96_96 \
+  --model iTransformer \
+  --data custom \
+  --features M \
+  --seq_len 96 \
+  --label_len 48 \
+  --pred_len 96 \
+  --e_layers 2 \
+  --d_layers 1 \
+  --factor 3 \
+  --enc_in 8 \
+  --dec_in 8 \
+  --c_out 8 \
+  --batch_size 8 \
+  --d_model 64\
+  --d_ff 128\
+  --des 'Exp' \
+  --itr 1""", 
+
+"""--task_name long_term_forecast \
+  --is_training 1 \
+  --root_path ./dataset/exchange_rate/ \
+  --data_path exchange_rate.csv \
+  --model_id iTransformer_Exchange_96_192 \
+  --model iTransformer \
+  --data custom \
+  --features M \
+  --seq_len 96 \
+  --label_len 48 \
+  --pred_len 192 \
+  --e_layers 2 \
+  --d_layers 1 \
+  --factor 3 \
+  --enc_in 8 \
+  --dec_in 8 \
+  --c_out 8 \
+  --batch_size 8 \
+  --d_model 64\
+  --d_ff 128\
+  --des 'Exp' \
+  --itr 1""", 
+  
+"""--task_name long_term_forecast \
+  --is_training 1 \
+  --root_path ./dataset/exchange_rate/ \
+  --data_path exchange_rate.csv \
+  --model_id iTransformer_Exchange_96_336 \
+  --model iTransformer \
+  --data custom \
+  --features M \
+  --seq_len 96 \
+  --label_len 48 \
+  --pred_len 336 \
+  --e_layers 2 \
+  --d_layers 1 \
+  --factor 3 \
+  --enc_in 8 \
+  --dec_in 8 \
+  --c_out 8 \
+  --batch_size 8 \
+  --d_model 64\
+  --d_ff 128\
+  --des 'Exp' \
+  --itr 1""", 
+
+
+"""--task_name long_term_forecast \
+  --is_training 1 \
+  --root_path ./dataset/exchange_rate/ \
+  --data_path exchange_rate.csv \
+  --model_id iTransformer_Exchange_96_720 \
+  --model iTransformer \
+  --data custom \
+  --features M \
+  --seq_len 96 \
+  --label_len 48 \
+  --pred_len 720 \
+  --e_layers 2 \
+  --d_layers 1 \
+  --factor 3 \
+  --enc_in 8 \
+  --dec_in 8 \
+  --c_out 8 \
+  --batch_size 8 \
+  --d_model 64\
+  --d_ff 128\
+  --des 'Exp' \
+  --itr 1""",
+
+"""--task_name long_term_forecast \
   --is_training 1 \
   --root_path ./dataset/weather/ \
   --data_path weather.csv \
@@ -130,55 +226,25 @@ scripts_list = ["""--task_name long_term_forecast \
   --itr 1 
 """]
 
-args0 = parser.parse_args(scripts_list[0].split())
-args0.use_gpu = True if torch.cuda.is_available() and args0.use_gpu else False
+args_list = [] # argument list
 
-if args0.use_gpu and args0.use_multi_gpu:
-    args0.devices = args0.devices.replace(' ', '')
-    device_ids0 = args0.devices.split(',')
-    args0.device_ids = [int(id_) for id_ in device_ids0]
-    args0.gpu = args0.device_ids[0]
+for c in range(8):
+    arg = parser.parse_args(scripts_list[c].split())
+    arg.use_gpu = True if torch.cuda.is_available() and arg.use_gpu else False
+    
+    if arg.use_gpu and arg.use_multi_gpu:
+        args.devices = arg.devices.replace(' ', '')
+        device_ids = arg.devices.split(',')
+        arg.device_ids = [int(id_) for id_ in device_ids]
+        arg.gpu = arg.device_ids[0]
+    
+    args_list.append(arg)
 
-# print('Args in experiment:')
-# print(args0)
-
-args1 = parser.parse_args(scripts_list[1].split())
-args1.use_gpu = True if torch.cuda.is_available() and args1.use_gpu else False
-
-if args1.use_gpu and args1.use_multi_gpu:
-    args1.devices = args1.devices.replace(' ', '')
-    device_ids1 = args1.devices.split(',')
-    args1.device_ids = [int(id_) for id_ in device_ids1]
-    args1.gpu = args1.device_ids[0]
-
-# print('Args in experiment:')
-# print(args1)
-
-args2 = parser.parse_args(scripts_list[2].split())
-args2.use_gpu = True if torch.cuda.is_available() and args2.use_gpu else False
-
-if args2.use_gpu and args2.use_multi_gpu:
-    args2.devices = args2.devices.replace(' ', '')
-    device_ids2 = args2.devices.split(',')
-    args2.device_ids = [int(id_) for id_ in device_ids2]
-    args2.gpu = args2.device_ids[0]
-
-# print('Args in experiment:')
-# print(args2)
-
-args3 = parser.parse_args(scripts_list[3].split())
-args3.use_gpu = True if torch.cuda.is_available() and args1.use_gpu else False
-
-if args3.use_gpu and args3.use_multi_gpu:
-    args1.devices = args3.devices.replace(' ', '')
-    device_ids3 = args3.devices.split(',')
-    args3.device_ids = [int(id_) for id_ in device_ids3]
-    args3.gpu = args3.device_ids[0]
-
-# print('Args in experiment:')
-# print(args3)
-
-# 스크립트 4개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
+# 스크립트 8개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
+exchange_96_96_result = "long_term_forecast_iTransformer_Exchange_96_96_Mod-iTransformer_data-exchange_rate.csv_(96to96)_0(1727614375)"
+exchange_96_192_result = "long_term_forecast_iTransformer_Exchange_96_192_Mod-iTransformer_data-exchange_rate.csv_(96to192)_0(1727520705)"
+exchange_96_336_result = "long_term_forecast_iTransformer_Exchange_96_336_Mod-iTransformer_data-exchange_rate.csv_(96to336)_0(1727521844)"
+exchange_96_720_result = "long_term_forecast_iTransformer_Exchange_96_720_Mod-iTransformer_data-exchange_rate.csv_(96to720)_0(1727520705)"
 weather_96_96_result = "long_term_forecast_iTransformer_weather_96_96_Mod-iTransformer_data-weather.csv_(96to96)_0(1727354116)"
 weather_96_192_result = "long_term_forecast_iTransformer_weather_96_192_Mod-iTransformer_data-weather.csv_(96to192)_0(1727354589)"
 weather_96_336_result = "long_term_forecast_iTransformer_weather_96_336_Mod-iTransformer_data-weather.csv_(96to336)_0(1727355118)"
@@ -186,23 +252,34 @@ weather_96_720_result = "long_term_forecast_iTransformer_weather_96_720_Mod-iTra
 
 # 변경해야 할 부분
 setting_pairs = [
-    (weather_96_96_result, args0),
-    (weather_96_192_result, args1),
-    (weather_96_336_result, args2),
-    (weather_96_720_result, args3)
+    (exchange_96_96_result, args_list[0]),
+    (exchange_96_192_result, args_list[1]),
+    (exchange_96_336_result, args_list[2]),
+    (exchange_96_720_result, args_list[3]),
+    (weather_96_96_result, args_list[4]),
+    (weather_96_192_result, args_list[5]),
+    (weather_96_336_result, args_list[6]),
+    (weather_96_720_result, args_list[7])
 ]
 
 idx = 0 # 순서
+col_count = 6 # 한 에포크당 수집 데이터 수
+num_epochs = 5 # 에포크 ㅅ횟수
+use_gpu = 3 # 사용 GPU 번호 - 오류 잡기 위해 
+# q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
+q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
+a_init , b_init = 5, -5  # 초기값(sigmoid로변환할  것 감안)  
+lr = 0.1 #gradient descending 속도. 0.001이 너무 커서 조정햇습니다.
 
-for idx in range(1):
+for idx in range(8):
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
-    args.gpu = 3
+    args.gpu = use_gpu
     
     # 모델 호출 - Exp_Long_Term_Forecast - exchange_96_96
     exp_model = Exp_Long_Term_Forecast(args)
     exp_model._build_model()
-    device = torch.device("cuda:3")
+    device = torch.device(f"cuda:{use_gpu}")
     exp_model.model.device = device
     # device = exp_model.device
     
@@ -240,7 +317,7 @@ for idx in range(1):
                 shuffle=False,
                 num_workers=args.num_workers,
                 drop_last=False)
-    
+                
     X = np.array([[t] for t in range(-args.seq_len, 0)])  # X는 입력 feature, shape: [seq_len, 1]
     X_new = np.array([[t] for t in range(args.pred_len)])  # 예측을 위한 새로운 시간 변수
     X_concat = np.concatenate([X, X_new], axis=0).reshape(-1)
@@ -253,31 +330,74 @@ for idx in range(1):
             self.res_A = res_A  # iTransformer train_result
             self.res_B = res_B  # lin_reg_96 train_result
             self.res_C = res_C
-            self.a = nn.Parameter(torch.ones(1, device=device)*0.998, requires_grad=True)
-            self.b = nn.Parameter(torch.ones(1, device=device)*0.001, requires_grad=True)
-            # self.c = nn.Parameter(torch.zeros(1, device=device), requires_grad=True)
+            self.a = nn.Parameter(torch.ones(1, device=device)*a_init, requires_grad=True)
+            self.b = nn.Parameter(torch.ones(1, device=device)*b_init, requires_grad=True)
+            if res_C is not None:
+                self.c = nn.Parameter(torch.ones(1, device=device)*(1-a_init -b_init), requires_grad=True)
+            else:
+                self.c = nn.Parameter(torch.ones(1, device=device)*0.0, requires_grad=True)
+            # self.c = nn.Parameter(torch.ones(1, device=device)*0.0, requires_grad=True)
             # self.d = nn.Parameter(torch.zeros(1, device=device), requires_grad=True)
         
         def set_a(self, val):
             # nn.Parameter를 다시 생성하지 않고 값을 설정
             with torch.no_grad():
                 self.a.copy_(torch.tensor([val], device=device))
-
+    
         def set_b(self, val):
             # nn.Parameter를 다시 생성하지 않고 값을 설정
             with torch.no_grad():
                 self.b.copy_(torch.tensor([val], device=device))
+                
         
+        """def forward(self, x):
+            output_A = self.res_A(x)
+            output_B = self.res_B(x)
+            
+            # 계수를 0 이상으로 제한
+            #with torch.no_grad():
+            a_pos = torch.nn.functional.softplus(self.a)  # Softplus 적용
+            b_pos = torch.nn.functional.softplus(self.b)  # Softplus 적용
+            # self.a.data = torch.clamp(self.a.data, min=0)
+
+            if self.res_C is None:
+
+                # self.b.data = torch.nn.functional.softplus(self.b)  # Softplus 적용
+                # self.b.data = torch.clamp(self.b.data, min=0)
+                # self.b.data = (torch.ones(1, device=device) - self.a)
+                    
+                combined_output = a_pos * output_A + (1 - a_pos) * output_B
+            else:
+                output_C = self.res_C(x)
+                # with torch.no_grad():
+                # self.b.data = torch.nn.functional.softplus(self.b)  # Softplus 적용
+                    # self.b.data = torch.clamp(self.b.data, min=0)
+                    # self.c.data = torch.clamp(self.c.data, min=0)
+                    # self.c.data = torch.nn.functional.softplus(self.b)
+                # self.c.copy_(torch.ones(1, device=device) - self.a - self.b)
+                c_pos = torch.nn.functional.softplus(self.c)
+                combined_output = a_pos * output_A + b_pos * output_B + (1 - a_pos - b_pos) * output_C
+            
+            return combined_output"""
         def forward(self, x):
             output_A = self.res_A(x)
             output_B = self.res_B(x)
-            output_C = self.res_C(x)
-            if output_C == None:
-              self.b = nn.Parameter(torch.ones(1, device=device), requires_grad=True) - self.a
-              combined_output = self.a * output_A + self.b * output_B
-            else:
-              self.c = nn.Parameter(torch.ones(1, device=device), requires_grad=True) - self.a - self.b
-              combined_output = self.a * output_A + self.b * output_B + output_C * self.c # + self.d
+            
+            # Apply sigmoid to ensure non-negative coefficients in range (0, 1)
+            a_sigmoid = torch.sigmoid(self.a)
+            b_sigmoid = torch.sigmoid(self.b)
+            
+            # Ensure the sum constraint by defining c as the remainder
+            c_sigmoid = torch.clamp(1 - a_sigmoid - b_sigmoid, min=0)
+        
+            # Compute the combined output with updated a, b, c
+            combined_output = a_sigmoid * output_A + b_sigmoid * output_B
+        
+            if self.res_C is not None:
+                output_C = self.res_C(x)
+                combined_output += c_sigmoid * output_C
+                
+        
             return combined_output
         
     # model_output_function
@@ -306,7 +426,45 @@ for idx in range(1):
         
         return fn
         
-        
+    def res_lin_reg_24(batch_x):
+        B, L, N = batch_x.shape  # L은 시퀀스 길이(seq_len)
+        # 24 조각에 대해서도 계산
+        vals_24 = [[linear_regression_direct(X[-24:], batch_x.permute(0,2,1)[idx, var , -24:], device) for var in range(N)] for idx in range(B)]
+        lin_result_24 = [[linear_predict(X_new, vals_24[idx][var], device) for var in range(N)] for idx in range(B)]
+        # 결과를 3D 텐서로 변환
+        lin_result_24 = torch.stack([torch.stack(lin_result_24[idx], dim=0) for idx in range(B)], dim=0).to(device).permute(0,2,1)
+        return lin_result_24
+    
+    
+    def res_lin_reg_48(batch_x):
+        B, L, N = batch_x.shape  # L은 시퀀스 길이(seq_len)
+        # 48 조각에 대해서도 계산
+        vals_48 = [[linear_regression_direct(X[-48:], batch_x.permute(0,2,1)[idx, var , -48:], device) for var in range(N)] for idx in range(B)]
+        lin_result_48 = [[linear_predict(X_new, vals_48[idx][var], device) for var in range(N)] for idx in range(B)]
+        # 결과를 3D 텐서로 변환
+        lin_result_48 = torch.stack([torch.stack(lin_result_48[idx], dim=0) for idx in range(B)], dim=0).to(device).permute(0,2,1)
+        return lin_result_48
+    
+    def res_lin_reg_12(batch_x):
+        B, L, N = batch_x.shape  # L은 시퀀스 길이(seq_len)
+        # 12 조각에 대해서도 계산
+        vals_12 = [[linear_regression_direct(X[-12:], batch_x.permute(0,2,1)[idx, var , -12:], device) for var in range(N)] for idx in range(B)]
+        lin_result_12 = [[linear_predict(X_new, vals_12[idx][var], device) for var in range(N)] for idx in range(B)]
+        # 결과를 3D 텐서로 변환
+        lin_result_12 = torch.stack([torch.stack(lin_result_12[idx], dim=0) for idx in range(B)], dim=0).to(device).permute(0,2,1)
+        return lin_result_12
+    
+    QMAP_FN = {
+      "none": None,
+      "lin12" : res_lin_reg_12,
+      "lin24" : res_lin_reg_24,
+      "lin48" : res_lin_reg_48,
+      "lin96" : res_lin_reg,
+      "lin" : res_lin_reg
+    }
+
+    
+         
     # 우선 train_set의 data_exchange를 바탕으로 측정값 참값 가져기
     # 트레인 데이터셋을 테스트해서 결과 받기, test 함수에서 가져옴
     preds_te_tr = [] # 예측값
@@ -364,6 +522,7 @@ for idx in range(1):
     
         if (i+1)%100==0:
             print(f"step {i+1} completed")
+    
         
     preds_te_tr = np.concatenate(preds_te_tr, axis=0)
     trues_te_tr = np.concatenate(trues_te_tr, axis=0)
@@ -371,22 +530,23 @@ for idx in range(1):
     preds_te_lin_24 = np.transpose(torch.concat(preds_te_lin_24, axis=0).detach().cpu().numpy(), (0,2,1))
     preds_te_lin_48 = np.transpose(torch.concat(preds_te_lin_48, axis=0).detach().cpu().numpy(), (0,2,1))
     preds_te_lin_12 = np.transpose(torch.concat(preds_te_lin_12, axis=0).detach().cpu().numpy(), (0,2,1))
+    input_len = i + 1
     
     # operation 끝
     data_col_time = time.time()
     print(f"경과 시간: {data_col_time-start_time}")
     
     # 모델 실험
-    num_epochs = 5
-    combine_model_test = CombinedModel(res_iTransformer, get_res_lin(96), None)
-    combine_model_test.set_a(0.95)
-    # combine_model_test.get_b(0.025)
+    combine_model_test = CombinedModel(res_iTransformer, QMAP_FN[q1], QMAP_FN[q2])
+    # combine_model_test.set_a(0.95)
+    # combine_model_test.set_b(0.025)
     # combine_model_test training
     combine_model_test.train()
+    # torch.nn.utils.clip_grad_norm_(combine_model_test.parameters(), max_norm=0.8) # gradient clipping - 크기 제한
     
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam([combine_model_test.a, combine_model_test.b])
-    
+    # optimizer = torch.optim.Adam(combine_model_test.parameters(), lr=lr, weight_decay=1e-4)
+    optimizer = torch.optim.Adam([combine_model_test.a, combine_model_test.b], lr=lr)
     
     # 검증 데이터셋 결과 확인
     def vali(vali_data, vali_loader, criterion):
@@ -407,17 +567,20 @@ for idx in range(1):
         total_loss = np.average(total_loss)
         combine_model_test.train()
         return total_loss
+    
     # 모델 훈련
-    rate_collection = 1 # 과적합 방지용 훈련.
     
     loss_points = [] # (a, b)
+    # input_len = int(np.ceil(len(dataset_input) / args.batch_size) )
+    input_len_div = int(np.ceil(input_len / (col_count - 1)))
+    
+    print("INPUT_LEN", input_len, input_len_div)
     early_stopping = EarlyStopping(patience=2, verbose=True)
     for epoch in range(num_epochs):
         cnt = 0
         train_loss = []
         # exp_model.train()
-        input_len = len(dataset_input)
-        input_len_div = (len(dataset_input)-1) // 5
+
         
         path = os.path.join(args.checkpoints, setting_path)
         if not os.path.exists(path):
@@ -436,8 +599,10 @@ for idx in range(1):
             if (cnt+1) % 50 == 0:
                 print(f"{cnt+1}th batch done, loss {loss}")
             if i == input_len -1 or i % input_len_div == 0:
-                a, b, = combine_model_test.a[0].item(), combine_model_test.b[0].item(),
+                a, b = torch.sigmoid(combine_model_test.a).detach().cpu().numpy()[0], torch.sigmoid(combine_model_test.b).detach().cpu().numpy()[0]
+                print(f"STEP {i} , {a,b}")
                 loss_points.append((a,b))
+
         print("="*50)
         print(f"Epoch {epoch+1} DONE")
         print()
@@ -446,7 +611,7 @@ for idx in range(1):
         vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
         print("vali_loss:", vali_loss)
         print()
-        print(combine_model_test.a, combine_model_test.b)
+        print(a,b)
         # early_stopping(vali_loss, combine_model_test, path)
         # if early_stopping.early_stop:
         #    print("Early stopping")
@@ -481,69 +646,90 @@ for idx in range(1):
         return np_pred_lin
     
     
-    # 이제 계산도 한다
-    # 각 배치와 변수에 대해 선형 회귀 해를 계산
-    # B, L, N = np_pred.shape  # L은 시퀀스 길이(seq_len)
-    # vals = [[linear_regression_direct(X, dataset_input_test[idx][0][:, var]) for var in range(N)] for idx in range(B)]
-    # lin_result = [[linear_predict(X_new, vals[idx][var]) for var in range(N)] for idx in range(B)]
-    # 결과를 numpy 모듈로 변경
-    # np_pred_lin = torch.stack([torch.stack(lin_result[idx], dim=0) for idx in range(B)], dim=0).to(device).permute(0,2,1).detach().cpu().numpy()
-    np_pred_lin = get_np_pred_lin(np_pred, 96)
+    # q1, q2가 잇을 때 
     
-    # vals2 = [[linear_regression_direct(X[-24:], dataset_input_test[idx][0][-24:, var], ) for var in range(N)] for idx in range(B)]
-    # lin_result2 = [[linear_predict(X_new, vals2[idx][var]) for var in range(N)] for idx in range(B)]
-    # 결과를 numpy 모듈로 변경
-    # np_pred_lin_24 = torch.stack([torch.stack(lin_result2[idx], dim=0) for idx in range(B)], dim=0).to(device).permute(0,2,1).detach().cpu().numpy()
-    np_pred_lin_24 = get_np_pred_lin(np_pred, 24)
+    if q1 == "lin96":
+        np_pred_first = get_np_pred_lin(np_pred, 96)
+        print("PRED_96_DONE")
+    elif q1 == "lin48":
+        np_pred_first = get_np_pred_lin(np_pred, 48)
+        print("PRED_48_DONE")
+    elif q1 == "lin24":
+        np_pred_first = get_np_pred_lin(np_pred, 24)
+        print("PRED_24_DONE")
+    elif q1 == "lin12":
+        np_pred_first = get_np_pred_lin(np_pred, 12)
+        print("PRED_12_DONE")
     
+    if q2 == "lin96":
+        np_pred_second = get_np_pred_lin(np_pred, 96)
+        print("PRED_96_DONE")
+    elif q2 == "lin48":
+        np_pred_second = get_np_pred_lin(np_pred, 48)
+        print("PRED_48_DONE")
+    elif q2 == "lin24":
+        np_pred_second = get_np_pred_lin(np_pred, 24)
+        print("PRED_24_DONE")
+    elif q2 == "lin12":
+        np_pred_second = get_np_pred_lin(np_pred, 12)
+        print("PRED_12_DONE")
+    elif q2 == "none":
+        np_pred_second = np.zeros(np_pred.shape)
+        print("NO_DONE")
+     
+    
+    print("COMBI", len(loss_points))
+    
+    loss_points_map = [] # a,b,c, mae, mse, smae, std_ratio, slope_ratio
     
     # loss_points에서 수집한 도트들을 비교 -> 최소 MSE, 최소 MAE 검색, 최소 SMAE 검색
-    a_res, b_res = (1,0)
-    a_res_mae, b_res_mae = (1,0)
-    a_res_smae, b_res_smae = (1,0)
-    mse_temp = 10 # 임시값
-    mae_temp = 10 # 임시값
-    smae_temp = 10 # 임시값
     for j, (a,b) in enumerate(loss_points):
-        res_temp = a*np_pred + b*np_pred_lin + (1-a-b)*np_pred_lin_24
+        res_temp = a*np_pred + b*np_pred_first + (1-a-b)*np_pred_second
         mse_step = MSE(res_temp, np_true)
         mae_step = MAE(res_temp, np_true)
         smae_step = SMAE(res_temp, np_true)
+        std_step = STD_RATIO(res_temp, np_true)
+        slope_step = SLOPE_RATIO(res_temp, np_true)
         
-        if mse_step < mse_temp:
-            mse_temp, a_res, b_res = mse_step, a, b
-        if mae_step < mae_temp:
-            mae_temp, a_res_mae, b_res_mae = mae_step, a, b
-        if abs(smae_step) < abs(smae_temp):
-            smae_temp, a_res_smae, b_res_smae = smae_step, a, b
+        loss_points_map.append({"cnt": j, "a":a,"b":b,"MSE":mse_step,"MAE": mae_step,"SMAE": smae_step, "STD_RATIO": std_step, "slope_step": slope_step})
+    
+    # MSE 기준으로 정렬
+    main_key = "MSE" 
+    new_loss_points_map = sorted(loss_points_map, key=lambda x: x[main_key])
             
     # 우선 mae 기준으로 할당.
-    a, b = a_res, b_res
-    # a, b, = combine_model_test.a[0].item(), combine_model_test.b[0].item(),
+    a, b = new_loss_points_map[0]["a"], new_loss_points_map[0]["b"]
     
     # 마지막으로 비교
-    # final_res = a*np_pred + b* np_pred_lin + (1-a-b)*np_pred_lin_24
-    final_res = a*np_pred + (1-a)*np_pred_lin
+    final_res = a*np_pred + b* np_pred_first + (1-a-b)*np_pred_second
+    # final_res = a*np_pred + (1-a)*np_pred_lin
     
     # 메트릭 비교하기 (원본 iTransformer)
-    with open(f'run_ensenble_txt{time.time()}.txt', 'w', encoding='utf8') as A:
+    with open(f'run_ensenble_txt_{setting_path}_{q1}_{q2}.txt', 'w', encoding='utf8') as A:
         wr = "TRAIN_PRED\n"
-        wr += f"{MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), REC_CORR(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)} \n"
+        wr += f"{MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)} \n"
         wr += "TRAIN_ENSEMBLE_PRED\n"
-        wr += f"{MSE(final_res, np_true), MAE(final_res, np_true), SMAE(final_res, np_true), REC_CORR(final_res, np_true), STD_RATIO(final_res, np_true), SLOPE_RATIO(final_res, np_true)}\n"
+        wr += f"{MSE(final_res, np_true), MAE(final_res, np_true), SMAE(final_res, np_true), STD_RATIO(final_res, np_true), SLOPE_RATIO(final_res, np_true)}\n"
         wr += "LIN_PRED\n"
-        wr += "TRAIN_PRED_LINEAR\n"
-        wr += f"{MSE(np_pred_lin, np_true), MAE(np_pred_lin, np_true), SMAE(np_pred_lin, np_true), REC_CORR(np_pred_lin, np_true), STD_RATIO(np_pred_lin, np_true), SLOPE_RATIO(np_pred_lin, np_true)}\n"
-        wr += "TRAIN_PRED_LINEAR_24\n"
-        wr += f"{MSE(np_pred_lin_24, np_true), MAE(np_pred_lin_24, np_true), SMAE(np_pred_lin_24, np_true), REC_CORR(np_pred_lin_24, np_true), STD_RATIO(np_pred_lin_24, np_true), SLOPE_RATIO(np_pred_lin_24, np_true)}\n"
+        wr += "TRAIN_PRED_FIRST\n"
+        wr += f"{MSE(np_pred_first, np_true), MAE(np_pred_first, np_true), SMAE(np_pred_first, np_true), STD_RATIO(np_pred_first, np_true), SLOPE_RATIO(np_pred_first, np_true)}\n"
+        wr += "TRAIN_PRED_SECOND\n"
+        wr += f"{MSE(np_pred_second, np_true), MAE(np_pred_second, np_true), SMAE(np_pred_second, np_true), STD_RATIO(np_pred_second, np_true), SLOPE_RATIO(np_pred_second, np_true)}\n"
+        wr += f"loss_combi : {loss_points}\n"
         A.write(wr)
     
     # 메트릭 저장
     metric_path = f"./results/{setting_path}/"
     metric_ensemble = [MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), REC_CORR(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)]
-    metric_lin = [MSE(np_pred_lin, np_true), MAE(np_pred_lin, np_true), SMAE(np_pred_lin, np_true), REC_CORR(np_pred_lin, np_true), STD_RATIO(np_pred_lin, np_true), SLOPE_RATIO(np_pred_lin, np_true)]
-    np.save(metric_path + "metrics_ensemble2.npy", metric_ensemble)
-    np.save(metric_path + "metrics_lin2.npy", metric_lin)
-    np.save(metric_path + "pred_ensemble2.npy", final_res)
-    np.save(metric_path + "pred_lin2.npy", np_pred_lin)
+    np.save(metric_path + "metrics_ensemble.npy", metric_ensemble)
+    np.save(metric_path + "pred_ensemble.npy", final_res)
+    np.save(metric_path + "coef_col.npy", loss_points)
+    np.save(metric_path + "coef_metric.npy", loss_points_map)
     # np.save(metric_path + "pred_lin24_2.npy", np_pred_lin_24)
+    
+    print("WORK DONE")
+    print()
+
+print("FINISHED")
+
+
