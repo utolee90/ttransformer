@@ -194,14 +194,17 @@ setting_pairs = [
 
 idx = 0 # 순서
 
-for idx in range(4):
+for idx in range(1):
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
+    args.gpu = 3
     
     # 모델 호출 - Exp_Long_Term_Forecast - exchange_96_96
     exp_model = Exp_Long_Term_Forecast(args)
     exp_model._build_model()
-    device = exp_model.device
+    device = torch.device("cuda:3")
+    exp_model.model.device = device
+    # device = exp_model.device
     
     # 위의 argument와 맞는 모델 호출
     checkpoint_path = './checkpoints/'
@@ -254,6 +257,16 @@ for idx in range(4):
             self.b = nn.Parameter(torch.ones(1, device=device)*0.001, requires_grad=True)
             # self.c = nn.Parameter(torch.zeros(1, device=device), requires_grad=True)
             # self.d = nn.Parameter(torch.zeros(1, device=device), requires_grad=True)
+        
+        def set_a(self, val):
+            # nn.Parameter를 다시 생성하지 않고 값을 설정
+            with torch.no_grad():
+                self.a.copy_(torch.tensor([val], device=device))
+
+        def set_b(self, val):
+            # nn.Parameter를 다시 생성하지 않고 값을 설정
+            with torch.no_grad():
+                self.b.copy_(torch.tensor([val], device=device))
         
         def forward(self, x):
             output_A = self.res_A(x)
@@ -324,17 +337,8 @@ for idx in range(4):
         outputs = exp_model.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
         
         # 각 배치와 변수에 대해 선형 회귀 해를 계산
-        # vals = [[linear_regression_direct(X, batch_x.permute(0,2,1)[idx, var , :], device) for var in range(N)] for idx in range(B)]
-        # lin_result = [[linear_predict(X_new, vals[idx][var], device) for var in range(N)] for idx in range(B)]
-        # 결과를 3D 텐서로 변환
-        # lin_result = torch.stack([torch.stack(lin_result[idx], dim=0) for idx in range(B)], dim=0).to(device)
         lin_result = res_lin_reg(batch_x, 96).to(device)
     
-        # 24 조각에 대해서도 계산
-        # vals_24 = [[linear_regression_direct(X[-24:], batch_x.permute(0,2,1)[idx, var , -24:], device) for var in range(N)] for idx in range(B)]
-        # lin_result_24 = [[linear_predict(X_new, vals_24[idx][var], device) for var in range(N)] for idx in range(B)]
-        # 결과를 3D 텐서로 변환
-        # lin_result_24 = torch.stack([torch.stack(lin_result_24[idx], dim=0) for idx in range(B)], dim=0).to(device)
         lin_result_24 = res_lin_reg(batch_x, 24).to(device)
         
         # 48 테스트
@@ -374,7 +378,9 @@ for idx in range(4):
     
     # 모델 실험
     num_epochs = 5
-    combine_model_test = CombinedModel(res_iTransformer, get_res_lin(96), get_res_lin(24))
+    combine_model_test = CombinedModel(res_iTransformer, get_res_lin(96), None)
+    combine_model_test.set_a(0.95)
+    # combine_model_test.get_b(0.025)
     # combine_model_test training
     combine_model_test.train()
     
@@ -516,7 +522,8 @@ for idx in range(4):
     # a, b, = combine_model_test.a[0].item(), combine_model_test.b[0].item(),
     
     # 마지막으로 비교
-    final_res = a*np_pred + b* np_pred_lin + (1-a-b)*np_pred_lin_24
+    # final_res = a*np_pred + b* np_pred_lin + (1-a-b)*np_pred_lin_24
+    final_res = a*np_pred + (1-a)*np_pred_lin
     
     # 메트릭 비교하기 (원본 iTransformer)
     with open(f'run_ensenble_txt{time.time()}.txt', 'w', encoding='utf8') as A:
@@ -535,8 +542,8 @@ for idx in range(4):
     metric_path = f"./results/{setting_path}/"
     metric_ensemble = [MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), REC_CORR(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)]
     metric_lin = [MSE(np_pred_lin, np_true), MAE(np_pred_lin, np_true), SMAE(np_pred_lin, np_true), REC_CORR(np_pred_lin, np_true), STD_RATIO(np_pred_lin, np_true), SLOPE_RATIO(np_pred_lin, np_true)]
-    np.save(metric_path + "metrics_ensemble.npy", metric_ensemble)
-    np.save(metric_path + "metrics_lin.npy", metric_lin)
-    np.save(metric_path + "pred_ensemble.npy", final_res)
-    np.save(metric_path + "pred_lin.npy", np_pred_lin)
-    np.save(metric_path + "pred_lin24.npy", np_pred_lin_24)
+    np.save(metric_path + "metrics_ensemble2.npy", metric_ensemble)
+    np.save(metric_path + "metrics_lin2.npy", metric_lin)
+    np.save(metric_path + "pred_ensemble2.npy", final_res)
+    np.save(metric_path + "pred_lin2.npy", np_pred_lin)
+    # np.save(metric_path + "pred_lin24_2.npy", np_pred_lin_24)

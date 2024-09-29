@@ -42,7 +42,7 @@ scripts_list = ["""--task_name long_term_forecast \
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate.csv \
   --model_id iTransformer_input_96 \
-  --model $model_name \
+  --model iTransformer \
   --data custom \
   --features M \
   --seq_len 96 \
@@ -65,7 +65,7 @@ scripts_list = ["""--task_name long_term_forecast \
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate.csv \
   --model_id iTransformer_input_192 \
-  --model $model_name \
+  --model iTransformer \
   --data custom \
   --features M \
   --seq_len 96 \
@@ -105,21 +105,22 @@ if args1.use_gpu and args1.use_multi_gpu:
     args1.gpu = args1.device_ids[0]
 
 # 스크립트 2개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
-exchange_96_96_result = "long_term_forecast_iTransformer_input_96_Mod-iTransformer_data-exchange_rate.csv_(96to96)_0(1727353907)"
+exchange_96_96_result = "long_term_forecast_iTransformer_Exchange_96_96_Mod-iTransformer_data-exchange_rate.csv_(96to96)_0(1727353907)"
 exchange_96_192_result = "long_term_forecast_iTransformer_input_192_Mod-iTransformer_data-exchange_rate.csv_(96to192)_0(1727354020)"
 
 # 변경해야 할 부분
 setting_pairs = [
-    (etth_96_96_result, args0),
-    (etth_96_192_result, args1),
+    (exchange_96_96_result, args0),
+    (exchange_96_192_result, args1),
 ]
 
 idx = 0 # 순서
 setting_path = setting_pairs[idx][0]
 args = setting_pairs[idx][1]
+args.gpu = 1
 
 # 모델 호출 - Exp_Long_Term_Forecast - exchange_96_96
-device = torch.device("cuda:0")
+device = torch.device("cuda:1")
 exp_model = Exp_Long_Term_Forecast(args)
 exp_model.model.to(device)
 exp_model._build_model()
@@ -156,12 +157,6 @@ dataset_input_loader = DataLoader(
             drop_last=False)
 dataset_input_test_loader = DataLoader(
             dataset_input_test,
-            batch_size=1, # 모든 데이터셋을 확인해야 해서 batch_size를 강제로 1로 조정.
-            shuffle=False,
-            num_workers=args.num_workers,
-            drop_last=False)
-dataset_input_valid_loader = DataLoader(
-            dataset_input_valid,
             batch_size=1, # 모든 데이터셋을 확인해야 해서 batch_size를 강제로 1로 조정.
             shuffle=False,
             num_workers=args.num_workers,

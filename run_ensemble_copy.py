@@ -261,6 +261,16 @@ for idx in range(1):
             # self.c = nn.Parameter(torch.zeros(1, device=device), requires_grad=True)
             # self.d = nn.Parameter(torch.zeros(1, device=device), requires_grad=True)
         
+        def set_a(self, val):
+            # nn.Parameter를 다시 생성하지 않고 값을 설정
+            with torch.no_grad():
+                self.a.copy_(torch.tensor([val], device=device))
+
+        def set_b(self, val):
+            # nn.Parameter를 다시 생성하지 않고 값을 설정
+            with torch.no_grad():
+                self.b.copy_(torch.tensor([val], device=device))
+        
         def forward(self, x):
             output_A = self.res_A(x)
             output_B = self.res_B(x)
@@ -381,8 +391,8 @@ for idx in range(1):
     # 모델 실험
     num_epochs = 5
     combine_model_test = CombinedModel(res_iTransformer, get_res_lin(24), get_res_lin(96))
-    combine_model_test.a = torch.ones(1, device=device)* 0.95
-    combine_model_test.b = torch.ones(1, device=device)*0.025
+    combine_model_test.set_a(0.95)
+    combine_model_test.set_b(0.025)
     # combine_model_test training
     combine_model_test.train()
     
