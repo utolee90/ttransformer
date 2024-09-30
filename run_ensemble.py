@@ -338,6 +338,8 @@ for idx in range(8):
                 self.c = nn.Parameter(torch.ones(1, device=device)*0.0, requires_grad=True)
             # self.c = nn.Parameter(torch.ones(1, device=device)*0.0, requires_grad=True)
             # self.d = nn.Parameter(torch.zeros(1, device=device), requires_grad=True)
+            self.a_sigmoid = torch.sigmoid(self.a)
+            self.b_sigmoid = torch.sigmoid(self.b)
         
         def set_a(self, val):
             # nn.Parameter를 다시 생성하지 않고 값을 설정
@@ -392,6 +394,10 @@ for idx in range(8):
         
             # Compute the combined output with updated a, b, c
             combined_output = a_sigmoid * output_A + b_sigmoid * output_B
+            
+            self.a_sigmoid = a_sigmoid
+            self.b_sigmoid = b_sigmoid
+            
         
             if self.res_C is not None:
                 output_C = self.res_C(x)
@@ -399,6 +405,11 @@ for idx in range(8):
                 
         
             return combined_output
+        
+        def get_result(self):
+            a, b = self.a_sigmoid.detach().cpu().numpy()[0], self.b_sigmoid.detach().cpu().numpy()[0]
+            return a,b
+            
         
     # model_output_function
     
@@ -599,9 +610,11 @@ for idx in range(8):
             if (cnt+1) % 50 == 0:
                 print(f"{cnt+1}th batch done, loss {loss}")
             if i == input_len -1 or i % input_len_div == 0:
-                a, b = torch.sigmoid(combine_model_test.a).detach().cpu().numpy()[0], torch.sigmoid(combine_model_test.b).detach().cpu().numpy()[0]
-                print(f"STEP {i} , {a,b}")
+                a, b = torch.sigmoid(combine_model_test.a).detach().cpu().numpy()[0], 1 - torch.sigmoid(combine_model_test.a).detach().cpu().numpy()[0]
+                print(f"STEP {i} , {a,b}", "FIX", (a,b) ==combine_model_test.get_result() )
                 loss_points.append((a,b))
+                vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
+                print("vali_loss:", vali_loss)
 
         print("="*50)
         print(f"Epoch {epoch+1} DONE")
@@ -609,8 +622,8 @@ for idx in range(8):
         train_loss = [v.item() for v in train_loss]
         train_loss = np.average(train_loss)
         vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
-        print("vali_loss:", vali_loss)
-        print()
+        # print("vali_loss:", vali_loss)
+        # print()
         print(a,b)
         # early_stopping(vali_loss, combine_model_test, path)
         # if early_stopping.early_stop:

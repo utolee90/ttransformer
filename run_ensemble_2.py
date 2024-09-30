@@ -265,11 +265,12 @@ setting_pairs = [
 idx = 0 # 순서
 col_count = 6 # 한 에포크당 수집 데이터 수
 num_epochs = 5 # 에포크 ㅅ횟수
-use_gpu = 4 # 사용 GPU 번호 - 오류 잡기 위해 
+use_gpu = 3 # 사용 GPU 번호 - 오류 잡기 위해 
 # q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
 q1, q2 = "lin96", "none" # 앙상블 모델 텍스트
-a_init , b_init = 1, -0.7  # 초기값(sigmoid로변환할  것 감안)  
+a_init , b_init = 0, 0  # 초기값(sigmoid로변환할  것 감안)  
 lr = 0.1 #gradient descending 속도. 0.001이 너무 커서 조정햇습니다.
+
 
 for idx in range(1):
     setting_path = setting_pairs[idx][0]
@@ -609,19 +610,18 @@ for idx in range(1):
                 print(f"{cnt+1}th batch done, loss {loss}")
             if i == input_len -1 or i % input_len_div == 0:
                 a, b = torch.sigmoid(combine_model_test.a).detach().cpu().numpy()[0], 1 - torch.sigmoid(combine_model_test.a).detach().cpu().numpy()[0]
-                print(f"STEP {i} , {a,b}", "FIX", combine_model_test.get_result() )
+                print(f"STEP {i} , {a,b}", "FIX", (a,b) ==combine_model_test.get_result() )
                 loss_points.append((a,b))
                 vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
                 print("vali_loss:", vali_loss)
-                
+
         print("="*50)
         print(f"Epoch {epoch+1} DONE")
         print()
         train_loss = [v.item() for v in train_loss]
         train_loss = np.average(train_loss)
-        vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
-        # print("vali_loss:", vali_loss)
-        # print()
+
+        print()
         print(a,b)
         # early_stopping(vali_loss, combine_model_test, path)
         # if early_stopping.early_stop:
