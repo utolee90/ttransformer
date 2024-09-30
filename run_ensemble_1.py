@@ -271,7 +271,26 @@ q1, q2 = "lin96", "none" # 앙상블 모델 텍스트
 a_init , b_init = 1, -0.7  # 초기값(sigmoid로변환할  것 감안)  
 lr = 0.1 #gradient descending 속도. 0.001이 너무 커서 조정햇습니다.
 
-for idx in range(1):
+# 역함수
+def sigmoid_inverse(y):
+    # y는 0과 1 사이의 값이어야 합니다.
+    return np.log(y / (1 - y))
+
+# 시작값 기준
+pair_settings = [
+  {"a_init":sigmoid_inverse(0.9), "b_init": sigmoid_inverse(0.1)},
+  {"a_init":sigmoid_inverse(0.8), "b_init": sigmoid_inverse(0.2)},
+  {"a_init":sigmoid_inverse(0.5), "b_init": sigmoid_inverse(0.5)},
+  {"a_init":sigmoid_inverse(0.2), "b_init": sigmoid_inverse(0.8)},
+  {"a_init":sigmoid_inverse(0.9), "b_init": sigmoid_inverse(0.001)},
+  {"a_init":sigmoid_inverse(0.8), "b_init": sigmoid_inverse(0.001)},
+  {"a_init":sigmoid_inverse(0.5), "b_init": sigmoid_inverse(0.001)},
+  {"a_init":sigmoid_inverse(0.2), "b_init": sigmoid_inverse(0.001)},
+]
+
+for pair_map in pair_settings:
+    a_init, b_init = pair_map["a_init"], pair_map["b_init"]
+    
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
     args.gpu = use_gpu
@@ -714,7 +733,7 @@ for idx in range(1):
     # final_res = a*np_pred + (1-a)*np_pred_lin
     
     # 메트릭 비교하기 (원본 iTransformer)
-    with open(f'run_ensenble_txt_{setting_path}_{q1}_{q2}.txt', 'w', encoding='utf8') as A:
+    with open(f'run_ensenble_txt_{setting_path}_coef_{a_init}_{b_init}.txt', 'w', encoding='utf8') as A:
         wr = "TRAIN_PRED\n"
         wr += f"{MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)} \n"
         wr += "TRAIN_ENSEMBLE_PRED\n"
@@ -728,7 +747,7 @@ for idx in range(1):
         A.write(wr)
     
     # 메트릭 저장
-    metric_path = f"./results/{setting_path}/"
+    metric_path = f"./results/{setting_path}/coef_{a_init}_{b_init}/"
     metric_ensemble = [MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), REC_CORR(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)]
     np.save(metric_path + "metrics_ensemble.npy", metric_ensemble)
     np.save(metric_path + "pred_ensemble.npy", final_res)

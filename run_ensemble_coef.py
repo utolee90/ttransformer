@@ -265,13 +265,33 @@ setting_pairs = [
 idx = 0 # 순서
 col_count = 6 # 한 에포크당 수집 데이터 수
 num_epochs = 5 # 에포크 ㅅ횟수
-use_gpu = 3 # 사용 GPU 번호 - 오류 잡기 위해 
+use_gpu = 4 # 사용 GPU 번호 - 오류 잡기 위해 
 # q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
 q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
-a_init , b_init = 5, -5  # 초기값(sigmoid로변환할  것 감안)  
+a_init , b_init = 1, -0.7  # 초기값(sigmoid로변환할  것 감안)  
 lr = 0.1 #gradient descending 속도. 0.001이 너무 커서 조정햇습니다.
 
-for idx in range(8):
+# 역함수
+def sigmoid_inverse(y):
+    # y는 0과 1 사이의 값이어야 합니다.
+    return np.log(y / (1 - y))
+
+# 시작값 기준
+pair_settings = [
+  {"a_init":sigmoid_inverse(0.999), "b_init": sigmoid_inverse(0.001)},
+  {"a_init":sigmoid_inverse(0.9), "b_init": sigmoid_inverse(0.1)},
+  {"a_init":sigmoid_inverse(0.8), "b_init": sigmoid_inverse(0.2)},
+  {"a_init":sigmoid_inverse(0.5), "b_init": sigmoid_inverse(0.5)},
+  {"a_init":sigmoid_inverse(0.2), "b_init": sigmoid_inverse(0.8)},
+  # {"a_init":sigmoid_inverse(0.9), "b_init": sigmoid_inverse(0.001)},
+  # {"a_init":sigmoid_inverse(0.8), "b_init": sigmoid_inverse(0.001)},
+  # {"a_init":sigmoid_inverse(0.5), "b_init": sigmoid_inverse(0.001)},
+  # {"a_init":sigmoid_inverse(0.2), "b_init": sigmoid_inverse(0.001)},
+]
+
+for pair_map in pair_settings:
+    a_init, b_init = pair_map["a_init"], pair_map["b_init"]
+    
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
     args.gpu = use_gpu
@@ -351,36 +371,7 @@ for idx in range(8):
             with torch.no_grad():
                 self.b.copy_(torch.tensor([val], device=device))
                 
-        
-        """def forward(self, x):
-            output_A = self.res_A(x)
-            output_B = self.res_B(x)
-            
-            # 계수를 0 이상으로 제한
-            #with torch.no_grad():
-            a_pos = torch.nn.functional.softplus(self.a)  # Softplus 적용
-            b_pos = torch.nn.functional.softplus(self.b)  # Softplus 적용
-            # self.a.data = torch.clamp(self.a.data, min=0)
 
-            if self.res_C is None:
-
-                # self.b.data = torch.nn.functional.softplus(self.b)  # Softplus 적용
-                # self.b.data = torch.clamp(self.b.data, min=0)
-                # self.b.data = (torch.ones(1, device=device) - self.a)
-                    
-                combined_output = a_pos * output_A + (1 - a_pos) * output_B
-            else:
-                output_C = self.res_C(x)
-                # with torch.no_grad():
-                # self.b.data = torch.nn.functional.softplus(self.b)  # Softplus 적용
-                    # self.b.data = torch.clamp(self.b.data, min=0)
-                    # self.c.data = torch.clamp(self.c.data, min=0)
-                    # self.c.data = torch.nn.functional.softplus(self.b)
-                # self.c.copy_(torch.ones(1, device=device) - self.a - self.b)
-                c_pos = torch.nn.functional.softplus(self.c)
-                combined_output = a_pos * output_A + b_pos * output_B + (1 - a_pos - b_pos) * output_C
-            
-            return combined_output"""
         def forward(self, x):
             output_A = self.res_A(x)
             output_B = self.res_B(x)
@@ -409,7 +400,6 @@ for idx in range(8):
         def get_result(self):
             a, b = self.a_sigmoid.detach().cpu().numpy()[0], self.b_sigmoid.detach().cpu().numpy()[0]
             return a,b
-            
         
     # model_output_function
     
@@ -553,11 +543,11 @@ for idx in range(8):
     # combine_model_test.set_b(0.025)
     # combine_model_test training
     combine_model_test.train()
-    # torch.nn.utils.clip_grad_norm_(combine_model_test.parameters(), max_norm=0.8) # gradient clipping - 크기 제한
+    # torch.nn.utils.clip_grad_norm_(combine_model_test.parameters(), max_norm=1.0) # gradient clipping - 크기 제한
     
     criterion = nn.MSELoss()
     # optimizer = torch.optim.Adam(combine_model_test.parameters(), lr=lr, weight_decay=1e-4)
-    optimizer = torch.optim.Adam([combine_model_test.a, combine_model_test.b], lr=lr)
+    optimizer = torch.optim.Adam([combine_model_test.a], lr=lr, weight_decay=1e-4)
     
     # 검증 데이터셋 결과 확인
     def vali(vali_data, vali_loader, criterion):
@@ -582,6 +572,7 @@ for idx in range(8):
     # 모델 훈련
     
     loss_points = [] # (a, b)
+    last_loss_points = [] # (a,b)
     # input_len = int(np.ceil(len(dataset_input) / args.batch_size) )
     input_len_div = int(np.ceil(input_len / (col_count - 1)))
     
@@ -611,11 +602,11 @@ for idx in range(8):
                 print(f"{cnt+1}th batch done, loss {loss}")
             if i == input_len -1 or i % input_len_div == 0:
                 a, b = torch.sigmoid(combine_model_test.a).detach().cpu().numpy()[0], 1 - torch.sigmoid(combine_model_test.a).detach().cpu().numpy()[0]
-                print(f"STEP {i} , {a,b}", "FIX", (a,b) ==combine_model_test.get_result() )
+                print(f"STEP {i} , {a,b}", "FIX", combine_model_test.get_result() )
                 loss_points.append((a,b))
                 vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
                 print("vali_loss:", vali_loss)
-
+                
         print("="*50)
         print(f"Epoch {epoch+1} DONE")
         print()
@@ -625,6 +616,7 @@ for idx in range(8):
         # print("vali_loss:", vali_loss)
         # print()
         print(a,b)
+        last_loss_points.append((a,b))
         # early_stopping(vali_loss, combine_model_test, path)
         # if early_stopping.early_stop:
         #    print("Early stopping")
@@ -693,6 +685,7 @@ for idx in range(8):
     
     print("COMBI", len(loss_points))
     
+    # loss_points에서 수집한 도트들을 비교 -> 최소 MSE, 최소 MAE 검색, 최소 SMAE 검색
     loss_points_map = [] # a,b,c, mae, mse, smae, std_ratio, slope_ratio
     
     # loss_points에서 수집한 도트들을 비교 -> 최소 MSE, 최소 MAE 검색, 최소 SMAE 검색
@@ -701,25 +694,21 @@ for idx in range(8):
         mse_step = MSE(res_temp, np_true)
         mae_step = MAE(res_temp, np_true)
         smae_step = SMAE(res_temp, np_true)
-        # std_step = STD_RATIO(res_temp, np_true)
-        # slope_step = SLOPE_RATIO(res_temp, np_true)
+        std_step = STD_RATIO(res_temp, np_true)
+        slope_step = SLOPE_RATIO(res_temp, np_true)
         
-        loss_points_map.append({"cnt": j, "a":a,"b":b,"MSE":mse_step,"MAE": mae_step,"SMAE": smae_step})
-        # loss_points_map.append({"cnt": j, "a":a,"b":b,"MSE":mse_step,"MAE": mae_step,"SMAE": smae_step, "STD_RATIO": std_step, "slope_step": slope_step})
+        loss_points_map.append({"cnt": j, "a":a,"b":b,"MSE":mse_step,"MAE": mae_step,"SMAE": smae_step, "STD_RATIO": std_step, "slope_step": slope_step})
     
     # MSE 기준으로 정렬
     main_key = "MSE" 
     new_loss_points_map = sorted(loss_points_map, key=lambda x: x[main_key])
-            
-    # 우선 mae 기준으로 할당.
-    a, b = new_loss_points_map[0]["a"], new_loss_points_map[0]["b"]
     
     # 마지막으로 비교
     final_res = a*np_pred + b* np_pred_first + (1-a-b)*np_pred_second
     # final_res = a*np_pred + (1-a)*np_pred_lin
     
     # 메트릭 비교하기 (원본 iTransformer)
-    with open(f'run_ensenble_txt_{setting_path}_{q1}_{q2}.txt', 'w', encoding='utf8') as A:
+    with open(f'run_ensenble_txt_{setting_path}_coef_{a_init}_{b_init}.txt', 'w', encoding='utf8') as A:
         wr = "TRAIN_PRED\n"
         wr += f"{MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)} \n"
         wr += "TRAIN_ENSEMBLE_PRED\n"
@@ -730,15 +719,16 @@ for idx in range(8):
         wr += "TRAIN_PRED_SECOND\n"
         wr += f"{MSE(np_pred_second, np_true), MAE(np_pred_second, np_true), SMAE(np_pred_second, np_true), STD_RATIO(np_pred_second, np_true), SLOPE_RATIO(np_pred_second, np_true)}\n"
         wr += f"loss_combi : {loss_points}\n"
+        wr += f"last_loss_combi : {last_loss_points}\n"
         A.write(wr)
     
     # 메트릭 저장
-    metric_path = f"./results/{setting_path}/"
-    metric_ensemble = [MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), REC_CORR(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)]
-    np.save(metric_path + "metrics_ensemble.npy", metric_ensemble)
-    np.save(metric_path + "pred_ensemble.npy", final_res)
-    np.save(metric_path + "coef_col.npy", loss_points)
-    np.save(metric_path + "coef_metric.npy", loss_points_map)
+    #metric_path = f"./results/{setting_path}/coef_{a_init}_{b_init}/"
+    #metric_ensemble = [MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), REC_CORR(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)]
+    #np.save(metric_path + "metrics_ensemble.npy", metric_ensemble)
+    #np.save(metric_path + "pred_ensemble.npy", final_res)
+    #np.save(metric_path + "coef_col.npy", loss_points)
+    #np.save(metric_path + "coef_metric.npy", loss_points_map)
     # np.save(metric_path + "pred_lin24_2.npy", np_pred_lin_24)
     
     print("WORK DONE")
