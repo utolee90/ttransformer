@@ -262,32 +262,39 @@ setting_pairs = [
     (weather_96_720_result, args_list[7])
 ]
 
-# 역함수
-def sigmoid_inverse(y):
-    # y는 0과 1 사이의 값이어야 합니다.
-    return np.log(y / (1 - y))
-
-
 idx = 0 # 순서
 col_count = 6 # 한 에포크당 수집 데이터 수
 num_epochs = 5 # 에포크 ㅅ횟수
 use_gpu = 4 # 사용 GPU 번호 - 오류 잡기 위해 
 # q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
 q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
-a_init , b_init = sigmoid_inverse(0.999), sigmoid_inverse(0.001)  # 초기값(sigmoid로변환할  것 감안)  
+a_init , b_init = 1, -0.7  # 초기값(sigmoid로변환할  것 감안)  
 lr = 0.01 #gradient descending 속도. 0.001이 너무 커서 조정햇습니다.
 
+# 역함수
+def sigmoid_inverse(y):
+    # y는 0과 1 사이의 값이어야 합니다.
+    return np.log(y / (1 - y))
 
 # 시작값 기준
 pair_settings = [
-  {"col_count": 3, "num_epochs": [1,3,5,10]},
-  {"col_count": 6, "num_epochs": [1,3,5,10]},
-  {"col_count": 10, "num_epochs": [1,3,5,10]}
+  {"a_init":sigmoid_inverse(0.999), "b_init": sigmoid_inverse(0.001),},
+  {"a_init":sigmoid_inverse(0.9), "b_init": sigmoid_inverse(0.1)},
+  {"a_init":sigmoid_inverse(0.8), "b_init": sigmoid_inverse(0.2)},
+  {"a_init":sigmoid_inverse(0.5), "b_init": sigmoid_inverse(0.5)},
+  {"a_init":sigmoid_inverse(0.2), "b_init": sigmoid_inverse(0.8)},
+  {"a_init":sigmoid_inverse(0.9), "b_init": sigmoid_inverse(0.001)},
+  {"a_init":sigmoid_inverse(0.8), "b_init": sigmoid_inverse(0.001)},
+  {"a_init":sigmoid_inverse(0.5), "b_init": sigmoid_inverse(0.001)},
+  {"a_init":sigmoid_inverse(0.2), "b_init": sigmoid_inverse(0.001)},
+  {"a_init":sigmoid_inverse(0.8), "b_init": sigmoid_inverse(0.1)},
+  {"a_init":sigmoid_inverse(0.6), "b_init": sigmoid_inverse(0.2)},
+  {"a_init":sigmoid_inverse(0.5), "b_init": sigmoid_inverse(0.25)},
+  {"a_init":sigmoid_inverse(0.2), "b_init": sigmoid_inverse(0.4)},
 ]
 
 for pair_map in pair_settings:
-    col_count, num_epochs = pair_map["col_count"], 10
-    num_epochs_list = pair_map["num_epochs"]
+    a_init, b_init = pair_map["a_init"], pair_map["b_init"]
     
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
@@ -544,7 +551,7 @@ for pair_map in pair_settings:
     
     criterion = nn.MSELoss()
     # optimizer = torch.optim.Adam(combine_model_test.parameters(), lr=lr, weight_decay=1e-4)
-    optimizer = torch.optim.Adam([combine_model_test.a,combine_model_test.b ], lr=lr, weight_decay=1e-3)
+    optimizer = torch.optim.Adam([combine_model_test.a, combine_model_test.b], lr=lr, weight_decay=1e-3)
     
     # 검증 데이터셋 결과 확인
     def vali(vali_data, vali_loader, criterion):
@@ -568,10 +575,7 @@ for pair_map in pair_settings:
     
     # 모델 훈련
     
-    loss_points = [] # (a, b) 
-    loss_points_1 = [] # 1만
-    loss_points_3 = [] # 3까지
-    loss_points_5 = [] # 5까지
+    loss_points = [] # (a, b)
     last_loss_points = [] # (a,b)
     # input_len = int(np.ceil(len(dataset_input) / args.batch_size) )
     input_len_div = int(np.ceil(input_len / (col_count - 1)))
@@ -604,11 +608,6 @@ for pair_map in pair_settings:
                 a, b = combine_model_test.get_result()
                 print(f"STEP {i}", combine_model_test.get_result(), f"loss {loss}" )
                 loss_points.append((a,b))
-                
-                if epoch < 1 : loss_points_1.append((a,b))
-                if epoch < 3 : loss_points_3.append((a,b))
-                if epoch < 5 : loss_points_5.append((a,b))
-                
                 vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
                 print("vali_loss:", vali_loss)
                 
@@ -699,45 +698,25 @@ for pair_map in pair_settings:
         mse_step = MSE(res_temp, np_true)
         mae_step = MAE(res_temp, np_true)
         smae_step = SMAE(res_temp, np_true)
-        # std_step = STD_RATIO(res_temp, np_true)
-        # slope_step = SLOPE_RATIO(res_temp, np_true)
+        std_step = STD_RATIO(res_temp, np_true)
+        slope_step = SLOPE_RATIO(res_temp, np_true)
         
-        # loss_points_map.append({"cnt": j, "a":a,"b":b,"MSE":mse_step,"MAE": mae_step,"SMAE": smae_step, "STD_RATIO": std_step, "slope_step": slope_step})
-        loss_points_map.append({"cnt": j, "a":a,"b":b,"MSE":mse_step,"MAE": mae_step,"SMAE": smae_step})
+        loss_points_map.append({"cnt": j, "a":a,"b":b,"MSE":mse_step,"MAE": mae_step,"SMAE": smae_step, "STD_RATIO": std_step, "slope_step": slope_step})
     
     # MSE 기준으로 정렬
     main_key = "MSE" 
     new_loss_points_map = sorted(loss_points_map, key=lambda x: x[main_key])
-    a,b = new_loss_points_map[0]["a"], new_loss_points_map[0]["b"]
-    
-    new_loss_points_map_5 = sorted(loss_points_map[:len(loss_points)//10*5], key=lambda x: x[main_key])
-    a5, b5= new_loss_points_map_5[0]["a"], new_loss_points_map_5[0]["b"]
-    
-    new_loss_points_map_3 = sorted(loss_points_map[:len(loss_points)//10*3], key=lambda x: x[main_key])
-    a3, b3= new_loss_points_map_3[0]["a"], new_loss_points_map_3[0]["b"]
-    
-    new_loss_points_map_1 = sorted(loss_points_map[:len(loss_points)//10], key=lambda x: x[main_key])
-    a1, b1= new_loss_points_map_1[0]["a"], new_loss_points_map_1[0]["b"]
     
     # 마지막으로 비교
     final_res = a*np_pred + b* np_pred_first + (1-a-b)*np_pred_second
-    final_res_5 = a5 * np_pred + b5*np_pred_first + (1-a5-b5)*np_pred_second
-    final_res_3 = a3 * np_pred + b3*np_pred_first + (1-a3-b3)*np_pred_second
-    final_res_1 = a1 * np_pred + b1*np_pred_first + (1-a1-b1)*np_pred_second
     # final_res = a*np_pred + (1-a)*np_pred_lin
     
     # 메트릭 비교하기 (원본 iTransformer)
-    with open(f'run_ensenble_txt_{setting_path}_epoch10_col{col_count}.txt', 'w', encoding='utf8') as A:
+    with open(f'run_ensenble_txt_{setting_path}_coef_{np.sigmoid(a_init)}_{np.sigmoid(b_init)}.txt', 'w', encoding='utf8') as A:
         wr = "TRAIN_PRED\n"
         wr += f"{MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)} \n"
         wr += "TRAIN_ENSEMBLE_PRED\n"
         wr += f"{MSE(final_res, np_true), MAE(final_res, np_true), SMAE(final_res, np_true), STD_RATIO(final_res, np_true), SLOPE_RATIO(final_res, np_true)}\n"
-        wr += "TRAIN_ENSEMBLE_PRED_5\n"
-        wr += f"{MSE(final_res_5, np_true), MAE(final_res_5, np_true), SMAE(final_res_5, np_true), STD_RATIO(final_res_5, np_true), SLOPE_RATIO(final_res_5, np_true)}\n"
-        wr += "TRAIN_ENSEMBLE_PRED_3\n"
-        wr += f"{MSE(final_res_3, np_true), MAE(final_res_3, np_true), SMAE(final_res_3, np_true), STD_RATIO(final_res_3, np_true), SLOPE_RATIO(final_res_3, np_true)}\n"
-        wr += "TRAIN_ENSEMBLE_PRED_1\n"
-        wr += f"{MSE(final_res_1, np_true), MAE(final_res_1, np_true), SMAE(final_res_1, np_true), STD_RATIO(final_res_1, np_true), SLOPE_RATIO(final_res_1, np_true)}\n"
         wr += "LIN_PRED\n"
         wr += "TRAIN_PRED_FIRST\n"
         wr += f"{MSE(np_pred_first, np_true), MAE(np_pred_first, np_true), SMAE(np_pred_first, np_true), STD_RATIO(np_pred_first, np_true), SLOPE_RATIO(np_pred_first, np_true)}\n"

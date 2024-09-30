@@ -44,6 +44,6 @@ xr = range(11)
 
 for key in metric_list:
     print(metric_map[key])
-    plt.plot(xr, metric_map[key], labels=f"{key}_metric")
+    plt.plot(xr, metric_map[key], label=f"{key}_metric")
     plt.title("Metric distribution")
     plt.savefig(f"{graphs_path}/{key}_distrb.png")
