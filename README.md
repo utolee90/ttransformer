@@ -1,5 +1,5 @@
-# PiFormer 
-PiFormer is a Time Series Forecasting method
+# tTransformer 
+**tTransformer** is an innovated method of time-series forecasting by integrating transformer-based method and classical time-step based forecasting methods.
 
 ## Other Models
 
@@ -80,10 +80,10 @@ If you find this repo useful, please cite our paper.
 
 ```
 @inproceedings{utolee90,
-  title={TimesNet: Temporal 2D-Variation Modeling for General Time Series Analysis},
-  author={Yohan Lee, Sanghak Park, Seyeon Park, Daeun Ji and Beakcheol Jang},
+  title={tTransformer:Enhancing Transformer-based Forecasting Model by Capturing the Trend using Linear Combinations},
+  author={Yohan Lee, Sanghak Park, Seyeon Park and Beakcheol Jang},
   booktitle={International Conference on Learning Representations},
-  year={2024},
+  year={2025},
 }
 
 ```

@@ -45,7 +45,7 @@ scripts_list = [
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate.csv \
   --model_id iTransformer_Exchange_96_96 \
-  --model iTransformer \
+  --model DLinear \
   --data custom \
   --features M \
   --seq_len 96 \
@@ -68,7 +68,7 @@ scripts_list = [
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate.csv \
   --model_id iTransformer_Exchange_96_192 \
-  --model iTransformer \
+  --model DLinear \
   --data custom \
   --features M \
   --seq_len 96 \
@@ -91,7 +91,7 @@ scripts_list = [
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate.csv \
   --model_id iTransformer_Exchange_96_336 \
-  --model iTransformer \
+  --model DLinear \
   --data custom \
   --features M \
   --seq_len 96 \
@@ -115,7 +115,7 @@ scripts_list = [
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate.csv \
   --model_id iTransformer_Exchange_96_720 \
-  --model iTransformer \
+  --model DLinear \
   --data custom \
   --features M \
   --seq_len 96 \
@@ -241,10 +241,10 @@ for c in range(8):
     args_list.append(arg)
 
 # 스크립트 8개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
-exchange_96_96_result = "long_term_forecast_iTransformer_Exchange_96_96_Mod-iTransformer_data-exchange_rate.csv_(96to96)_0(1727614375)"
-exchange_96_192_result = "long_term_forecast_iTransformer_Exchange_96_192_Mod-iTransformer_data-exchange_rate.csv_(96to192)_0(1727520705)"
-exchange_96_336_result = "long_term_forecast_iTransformer_Exchange_96_336_Mod-iTransformer_data-exchange_rate.csv_(96to336)_0(1727521844)"
-exchange_96_720_result = "long_term_forecast_iTransformer_Exchange_96_720_Mod-iTransformer_data-exchange_rate.csv_(96to720)_0(1727520705)"
+exchange_96_96_result = "long_term_forecast_iTransformer_Exchange_96_96_Mod-DLinear_data-exchange_rate.csv_(96to96)_0(1727696477)"
+exchange_96_192_result = "long_term_forecast_iTransformer_Exchange_96_192_Mod-DLinear_data-exchange_rate.csv_(96to192)_0(1727696521)"
+exchange_96_336_result = "long_term_forecast_iTransformer_Exchange_96_336_Mod-DLinear_data-exchange_rate.csv_(96to336)_0(1727696576)"
+exchange_96_720_result = "long_term_forecast_iTransformer_Exchange_96_720_Mod-DLinear_data-exchange_rate.csv_(96to720)_0(1727696680)"
 weather_96_96_result = "long_term_forecast_iTransformer_weather_96_96_Mod-iTransformer_data-weather.csv_(96to96)_0(1727354116)"
 weather_96_192_result = "long_term_forecast_iTransformer_weather_96_192_Mod-iTransformer_data-weather.csv_(96to192)_0(1727354589)"
 weather_96_336_result = "long_term_forecast_iTransformer_weather_96_336_Mod-iTransformer_data-weather.csv_(96to336)_0(1727355118)"
@@ -265,13 +265,13 @@ setting_pairs = [
 idx = 0 # 순서
 col_count = 6 # 한 에포크당 수집 데이터 수
 num_epochs = 5 # 에포크 ㅅ횟수
-use_gpu = 3 # 사용 GPU 번호 - 오류 잡기 위해 
+use_gpu = 4 # 사용 GPU 번호 - 오류 잡기 위해 
 # q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
 q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
 a_init , b_init = 5, -5  # 초기값(sigmoid로변환할  것 감안)  
 lr = 0.1 #gradient descending 속도. 0.001이 너무 커서 조정햇습니다.
 
-for idx in range(8):
+for idx in range(4):
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
     args.gpu = use_gpu
