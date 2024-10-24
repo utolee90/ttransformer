@@ -78,27 +78,12 @@ Note: The original code for the classification task can be found [here](https://
 
 If you find this repo useful, please cite our paper.
 
-```
-@inproceedings{utolee90,
-  title={tTransformer:Enhancing Transformer-based Forecasting Model by Capturing the Trend using Linear Combinations},
-  author={Yohan Lee, Sanghak Park, Seyeon Park and Beakcheol Jang},
-  booktitle={International Conference on Learning Representations},
-  year={2025},
-}
-
-```
 
 ## Contact
 If you have any questions or suggestions, feel free to contact our maintenance team:
 
 Current:
-- Yohan Lee (Ph.D. student, utipiamath@yonsei.ac.kr)
-- Sanghak Park (Master student, sean7067@yonsei.ac.kr)
-- Seyeon Park (Master student, seyeon@yonsei.ac.kr)
-- Daeun Ji (Master student, daeun09@yonsei.ac.kr)
 
-
-Or describe it in Issues.
 
 ## Acknowledgement
 

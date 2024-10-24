@@ -233,7 +233,7 @@ for c in range(8):
     arg.use_gpu = True if torch.cuda.is_available() and arg.use_gpu else False
     
     if arg.use_gpu and arg.use_multi_gpu:
-        args.devices = arg.devices.replace(' ', '')
+        arg.devices = arg.devices.replace(' ', '')
         device_ids = arg.devices.split(',')
         arg.device_ids = [int(id_) for id_ in device_ids]
         arg.gpu = arg.device_ids[0]

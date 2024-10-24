@@ -40,7 +40,7 @@ np.random.seed(fix_seed)
 
 
 scripts_list = [
-"""--task_name long_term_forecast \
+"""  --task_name long_term_forecast \
   --is_training 1 \
   --root_path ./dataset/exchange_rate/ \
   --data_path exchange_rate.csv \
@@ -58,10 +58,8 @@ scripts_list = [
   --dec_in 8 \
   --c_out 8 \
   --batch_size 8 \
-  --d_model 64\
-  --d_ff 128\
   --des 'Exp' \
-  --itr 1""", 
+  --itr 1 """, 
 
 """--task_name long_term_forecast \
   --is_training 1 \
@@ -233,7 +231,7 @@ for c in range(8):
     arg.use_gpu = True if torch.cuda.is_available() and arg.use_gpu else False
     
     if arg.use_gpu and arg.use_multi_gpu:
-        args.devices = arg.devices.replace(' ', '')
+        arg.devices = arg.devices.replace(' ', '')
         device_ids = arg.devices.split(',')
         arg.device_ids = [int(id_) for id_ in device_ids]
         arg.gpu = arg.device_ids[0]
@@ -241,7 +239,7 @@ for c in range(8):
     args_list.append(arg)
 
 # 스크립트 8개 정리 (./scripts/long_term_forecast/Multi_script/iTransformer_exchange_weather.sh)
-exchange_96_96_result = "long_term_forecast_iTransformer_Exchange_96_96_Mod-iTransformer_data-exchange_rate.csv_(96to96)_0(1727614375)"
+exchange_96_96_result = "long_term_forecast_iTransformer_Exchange_96_96_Mod-iTransformer_data-exchange_rate.csv_(96to96)_0(1728896616)"
 exchange_96_192_result = "long_term_forecast_iTransformer_Exchange_96_192_Mod-iTransformer_data-exchange_rate.csv_(96to192)_0(1727520705)"
 exchange_96_336_result = "long_term_forecast_iTransformer_Exchange_96_336_Mod-iTransformer_data-exchange_rate.csv_(96to336)_0(1727521844)"
 exchange_96_720_result = "long_term_forecast_iTransformer_Exchange_96_720_Mod-iTransformer_data-exchange_rate.csv_(96to720)_0(1727520705)"
@@ -271,7 +269,7 @@ def sigmoid_inverse(y):
 idx = 0 # 순서
 col_count = 6 # 한 에포크당 수집 데이터 수
 num_epochs = 5 # 에포크 ㅅ횟수
-use_gpu = 4 # 사용 GPU 번호 - 오류 잡기 위해 
+use_gpu = 0 # 사용 GPU 번호 - 오류 잡기 위해 
 # q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
 q1, q2 = "lin96", "lin24" # 앙상블 모델 텍스트
 a_init , b_init = sigmoid_inverse(0.999), sigmoid_inverse(0.001)  # 초기값(sigmoid로변환할  것 감안)  
@@ -544,7 +542,7 @@ for pair_map in pair_settings:
     
     criterion = nn.MSELoss()
     # optimizer = torch.optim.Adam(combine_model_test.parameters(), lr=lr, weight_decay=1e-4)
-    optimizer = torch.optim.Adam([combine_model_test.a,combine_model_test.b ], lr=lr, weight_decay=1e-3)
+    optimizer = torch.optim.Adam([combine_model_test.a,combine_model_test.b ], lr=lr)
     
     # 검증 데이터셋 결과 확인
     def vali(vali_data, vali_loader, criterion):
