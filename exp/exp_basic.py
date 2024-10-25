@@ -43,7 +43,7 @@ class Exp_Basic(object):
             'PITS_decomp': PITS_decomp,
             'DiTransformer_decomp': DiTransformer_decomp,
             'DLinear_trend': DLinear_trend, 
-            'DLinear_trend_decomp': DLinear_trend_decomp
+            'DLinear_trend_decomp': DLinear_trend_decomp,
         }
         if args.model == 'Mamba':
             print('Please make sure you have successfully installed mamba_ssm')

@@ -38,6 +38,12 @@ parser.add_argument('--train_step', type=float, default=1.0, help='train data wi
 # SparseTSF
 parser.add_argument('--period_len', type=int, default=24, help='period length')
 
+# metrics (dtw)
+parser.add_argument('--use_dtw', type=bool, default=False, 
+                    help='the controller of using dtw metric (dtw is time consuming, not suggested unless necessary)')
+
+parser.add_argument('--scale', default=1, type=int, help="Use scale when factorizing data")
+
 # PITS
 parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
 parser.add_argument('--head_dropout', type=float, default=0.0, help='head dropout')
@@ -125,10 +131,6 @@ parser.add_argument('--devices', type=str, default='0,1,2,3,4,5,6,7,8', help='de
 parser.add_argument('--p_hidden_dims', type=int, nargs='+', default=[128, 128],
                     help='hidden layer dimensions of projector (List)')
 parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
-
-# metrics (dtw)
-parser.add_argument('--use_dtw', type=bool, default=False, 
-                    help='the controller of using dtw metric (dtw is time consuming, not suggested unless necessary)')
 
 # Augmentation
 parser.add_argument('--augmentation_ratio', type=int, default=0, help="How many times to augment")

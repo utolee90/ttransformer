@@ -6,7 +6,7 @@ from layers.SelfAttention_Family import FullAttention, AttentionLayer
 from layers.Embed import DataEmbedding_inverted
 import numpy as np
 from sklearn.linear_model import LinearRegression
-
+from utils.tools import get_res_lin
 
 class Model(nn.Module):
     """
@@ -19,6 +19,12 @@ class Model(nn.Module):
         self.seq_len = configs.seq_len
         self.pred_len = configs.pred_len
         self.output_attention = configs.output_attention
+        self.lin_combi = [96, 48] # 96, 48
+        self.coeffs_params = [nn.Parameter(torch.ones(1)*0.0, requires_grad=True) for c in range(len(self.lin_combi))]
+        self.linear_maps = []
+        for cval in self.lin_combi:
+            self.linear_maps.append(get_res_lin(cval, self.pred_len))
+ 
         # Embedding
         self.enc_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, configs.embed, configs.freq,
                                                     configs.dropout)
@@ -37,6 +43,8 @@ class Model(nn.Module):
             ],
             norm_layer=torch.nn.LayerNorm(configs.d_model)
         )
+        # lin_combi
+
         # Decoder
         if self.task_name in ['long_term_forecast', 'short_term_forecast', 'long_term_forecast_partial']:
             self.projection = nn.Linear(configs.d_model, configs.pred_len, bias=True)
@@ -58,9 +66,6 @@ class Model(nn.Module):
 
         _, _, N = x_enc.shape
 
-        # linear_coef
-        
-
         # Embedding
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
         enc_out, attns = self.encoder(enc_out, attn_mask=None)
@@ -69,6 +74,14 @@ class Model(nn.Module):
         # De-Normalization from Non-stationary Transformer
         dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
         dec_out = dec_out + (means[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
+
+        # lin_combi
+        remaining = 1- sum(self.coeffs_params).to(dec_out.device)
+        dec_out = remaining* dec_out
+
+        for j, cmap in enumerate(self.linear_maps):
+            dec_out = dec_out + self.coeffs_params[j].to(dec_out.device) * cmap(x_enc).to(dec_out.device).permute(0,2,1)
+
         return dec_out
 
     def imputation(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask):
@@ -88,6 +101,13 @@ class Model(nn.Module):
         # De-Normalization from Non-stationary Transformer
         dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, L, 1))
         dec_out = dec_out + (means[:, 0, :].unsqueeze(1).repeat(1, L, 1))
+
+        # lin_combi
+        remaining = 1- sum(self.coeffs)
+        dec_out = remaining* dec_out
+        for j, cmap in self.linear_maps:
+            dec_out = dec_out + self.coeffs_params[j] * cmap(x_enc).permute(0,2,1)
+
         return dec_out
 
     def anomaly_detection(self, x_enc):
@@ -107,6 +127,13 @@ class Model(nn.Module):
         # De-Normalization from Non-stationary Transformer
         dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, L, 1))
         dec_out = dec_out + (means[:, 0, :].unsqueeze(1).repeat(1, L, 1))
+
+        # lin_combi
+        remaining = 1- sum(self.coeffs)
+        dec_out = remaining* dec_out
+        for j, cmap in self.linear_maps:
+            dec_out = dec_out + self.coeffs[j] * cmap(x_enc).permute(0,2,1)
+
         return dec_out
 
     def classification(self, x_enc, x_mark_enc):

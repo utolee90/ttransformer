@@ -29,6 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
     parser.add_argument('--model', type=str, required=True, default='Autoformer',
                         help='model name, options: [Autoformer, Transformer, TimesNet]')
+    parser.add_argument('--checkpoint_name', type=str, required=False, default='', help='checkpoint_name for pretrained_model')
 
     # data loader
     parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')
@@ -259,6 +260,9 @@ if __name__ == '__main__':
                 args.pred_len,
                 ii,
                 timestamp)
+        
+        setting = args.checkpoint_name
+
         """
         setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}({})'.format(
             args.task_name,
