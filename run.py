@@ -13,6 +13,7 @@ import random
 import numpy as np
 from decimal import Decimal
 import time
+import re
 
 if __name__ == '__main__':
     fix_seed = 2021
@@ -207,7 +208,10 @@ if __name__ == '__main__':
         for ii in range(args.itr):
             # setting record of experiments
             exp = Exp(args)  # set experiments
-            setting = '{}_{}_Mod-{}_data-{}_({}to{})_{}({})'.format(
+            if args.checkpoint_name:
+                setting = args.checkpoint_name
+            else:
+                setting = '{}_{}_Mod-{}_data-{}_({}to{})_{}({})'.format(
                 args.task_name,
                 args.model_id,
                 args.model,
@@ -216,28 +220,7 @@ if __name__ == '__main__':
                 args.pred_len,
                 ii,
                 timestamp)
-            """
-            setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}({})'.format(
-                args.task_name,
-                args.model_id,
-                args.model,
-                args.data,
-                args.features,
-                args.seq_len,
-                args.label_len,
-                args.pred_len,
-                args.d_model,
-                args.n_heads,
-                args.e_layers,
-                args.d_layers,
-                args.d_ff,
-                args.expand,
-                args.d_conv,
-                args.factor,
-                args.embed,
-                args.distil,
-                args.des, ii, timestamp)
-            """
+
             #setting이 너무 길어지므로 model_id + model + timestamp만 남기고 대신 argment를 text에 저장
             with open('exp_arguments_store.txt', 'a', encoding='utf8') as X:
                 X.write(str(timestamp) + " :::" + str(args) + '\n')
@@ -251,18 +234,33 @@ if __name__ == '__main__':
     else:
         ii = 0
 
-        setting = '{}_{}_Mod-{}_data-{}_({}to{})_{}({})'.format(
+        if args.checkpoint_name:
+            setting = args.checkpoint_name
+        else:
+            # 가장 유사한 포맷 찾기.
+
+            base_setting = r'{}_{}_Mod-{}_data-{}_({}to{})_{}\(\d+\)'.format(
                 args.task_name,
                 args.model_id,
                 args.model,
                 args.data_path,
                 args.seq_len,
                 args.pred_len,
-                ii,
-                timestamp)
-        
-        setting = args.checkpoint_name
+                ii
+            )
 
+            # 정규 표현식에서 필요한 특수 문자 이스케이프 처리
+            base_pattern = base_setting.replace('(', r'\(').replace(')', r'\)').replace("\d+", r"\d+")
+
+            # 디렉토리 경로 설정
+            directory_path = "./checkpoints/"
+
+            # 지정된 형식의 디렉토리 검색
+            matching_dirs = [d for d in os.listdir(directory_path) if re.match(base_pattern, d)]
+
+            if len(matching_dirs)>0:
+                setting = matching_dirs[0]
+        
         """
         setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}({})'.format(
             args.task_name,

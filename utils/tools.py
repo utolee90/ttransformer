@@ -229,4 +229,5 @@ def sigmoid_inverse(y):
     return np.log(y / (1 - y))
 
 # 시그모이드 함수
-sigmoid = lambda x: 1 / (1 + np.exp(-x)) # exp는 지수 함수를 의미함
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x)) # exp는 지수 함수를 의미함

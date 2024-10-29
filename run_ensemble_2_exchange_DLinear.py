@@ -39,7 +39,7 @@ np.random.seed(fix_seed)
 
 # 스크립트 단번에 호출하는 방법
 scripts_texts = ""
-script_path = "./scripts/script_ensemble_iTransformer_exchange.sh"
+script_path = "./scripts/script_ensemble_DLinear_exchange.sh"
 
 with open(script_path, 'r', encoding='utf8') as W:
     scripts_texts = W.read()
