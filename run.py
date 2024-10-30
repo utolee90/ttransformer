@@ -233,13 +233,13 @@ if __name__ == '__main__':
             torch.cuda.empty_cache()
     else:
         ii = 0
-
+        setting = ''
         if args.checkpoint_name:
             setting = args.checkpoint_name
         else:
             # 가장 유사한 포맷 찾기.
 
-            base_setting = r'{}_{}_Mod-{}_data-{}_({}to{})_{}\(\d+\)'.format(
+            base_setting = r'{}_{}_Mod-{}_data-{}_({}to{})_{}'.format(
                 args.task_name,
                 args.model_id,
                 args.model,
@@ -249,17 +249,15 @@ if __name__ == '__main__':
                 ii
             )
 
-            # 정규 표현식에서 필요한 특수 문자 이스케이프 처리
-            base_pattern = base_setting.replace('(', r'\(').replace(')', r'\)').replace("\d+", r"\d+")
+            base_pattern = base_setting.replace('(', r'\(').replace(')', r'\)')
 
-            # 디렉토리 경로 설정
             directory_path = "./checkpoints/"
 
             # 지정된 형식의 디렉토리 검색
             matching_dirs = [d for d in os.listdir(directory_path) if re.match(base_pattern, d)]
 
             if len(matching_dirs)>0:
-                setting = matching_dirs[0]
+                setting = matching_dirs[-1]
         
         """
         setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}({})'.format(
