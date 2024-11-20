@@ -176,3 +176,4 @@ dataset.zip
 *.npy
 results_metric/
 run_ensenble_*
+coef_result

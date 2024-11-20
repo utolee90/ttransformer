@@ -178,7 +178,7 @@ def get_Xval(seq_len, pred_len):
     return X_old, X_new, X_concat
 
 # batch_x -> lin_reg 도출
-def res_lin_reg(batch_x, seq_len, pred_len):
+def res_lin_reg(batch_x, seq_len, pred_len, is_coeff=False):
 
     B, L, N = batch_x.shape  # B: Batch size, L: Sequence length, N: Number of variables
 
@@ -196,6 +196,7 @@ def res_lin_reg(batch_x, seq_len, pred_len):
     # Convert X_new to a tensor once outside the loop
     X_new_torch = torch.tensor(X_new, dtype=torch.float32, device=device)  # Shape: [pred_len, 2]
 
+    w_stack = []
     # Perform batched linear regression for each batch and variable
     for idx in range(B):
         # Get the y_torch values for all variables in one operation
@@ -204,11 +205,17 @@ def res_lin_reg(batch_x, seq_len, pred_len):
         # Compute least squares in batch for all variables at once
         # torch.linalg.lstsq can handle multiple right-hand sides (N variables)
         w = torch.linalg.lstsq(X_torch, y_torch).solution  # Shape: [2, N] (2 coefficients per variable)
+        w_stack.append(w.permute(0,1))
 
         # Make predictions over the entire X_new using batch matrix multiplication
         lin_result[idx, :, :] = X_new_torch @ w  # Shape: [pred_len, N]
 
-    return lin_result.permute(0, 2, 1)  # Return in shape [B, N, pred_len]
+    # find_coefficients
+    if is_coeff:
+        return torch.stack(w_stack, dim=0) # [B, N, [intercept, slope]]
+    # find result
+    else:
+        return lin_result.permute(0, 2, 1)  # Return in shape [B, N, pred_len]
 
 # res_len 함수 추가
 def get_res_lin(seq_len, pred_len):
@@ -231,3 +238,67 @@ def sigmoid_inverse(y):
 # 시그모이드 함수
 def sigmoid(x):
     return 1 / (1 + np.exp(-x)) # exp는 지수 함수를 의미함
+
+# constant function
+def extend_last(batch_x, pred_len):
+    B, L, N = batch_x.shape  # B: Batch size, L: Sequence length, N: Number of variables
+    last_val = batch_x[:, -1:, :] # last value of batch
+    last_val_repeated = last_val.repeat(1, pred_len, 1)  # Repeat along the second dimension (sequence length)
+    return last_val_repeated.permute(0,2,1)
+
+def get_extend_last(pred_len):
+
+    def fn(batch_x):
+        return extend_last(batch_x, pred_len)
+    
+    return fn
+
+# Function to fit sinusoidal function with given period to batch_x
+def res_sin_reg(batch_x, seq_len, pred_len, period):
+    B, L, N = batch_x.shape  # B: Batch size, L: Sequence length, N: Number of variables
+    device = batch_x.device
+
+    # Prepare time indices
+    time_steps = torch.arange(seq_len + pred_len, dtype=torch.float32, device=device)
+    X_old, X_new, X_concat = get_Xval(seq_len, pred_len)
+
+    # Initialize tensor for storing results
+    sin_result = torch.zeros((B, X_new.shape[0], N), device=device)  # Shape: [B, pred_len, N]
+
+    # Perform batched sinusoidal regression for each batch and variable
+    for idx in range(B):
+        for var_idx in range(N):
+            # Extract time series for the current variable
+            y_torch = batch_x[idx, -seq_len:, var_idx].to(device)  # Shape: [seq_len]
+            
+            # Calculate the mean of the time series to remove the offset
+            y_mean = y_torch.mean()
+            y_centered = y_torch - y_mean
+            
+            # Prepare sinusoidal basis functions
+            sin_basis = torch.sin(2 * np.pi * time_steps[:seq_len] / period).to(device)
+            cos_basis = torch.cos(2 * np.pi * time_steps[:seq_len] / period).to(device)
+            
+            # Stack basis functions
+            X_torch = torch.stack([sin_basis, cos_basis], dim=1)  # Shape: [seq_len, 2]
+            
+            # Compute least squares to find r1 (amplitude) and r2 (phase)
+            w = torch.linalg.lstsq(X_torch, y_centered).solution  # Shape: [2]
+            r1, r2 = w  # Unpack coefficients
+
+            # Create sinusoidal prediction based on learned r1 and r2
+            sin_pred = r1 * torch.sin(2 * np.pi * time_steps[seq_len:] / period) + \
+                       r2 * torch.cos(2 * np.pi * time_steps[seq_len:] / period) + y_mean
+            
+            # Store the result
+            sin_result[idx, :, var_idx] = sin_pred
+
+    return sin_result.permute(0, 2, 1)  # Return in shape [B, N, pred_len]
+
+# res_len 함수 추가
+def get_res_sin(seq_len, pred_len, period):
+
+    def fn(batch_x):
+        return res_sin_reg(batch_x, seq_len, pred_len, period)
+    
+    return fn

@@ -39,7 +39,7 @@ np.random.seed(fix_seed)
 
 # 스크립트 단번에 호출하는 방법
 scripts_texts = ""
-script_path = "./scripts/script_ensemble_iTransformer_exchange.sh"
+script_path = "./scripts/script_ensemble_DLinear_weather_noshuffle.sh"
 
 with open(script_path, 'r', encoding='utf8') as W:
     scripts_texts = W.read()
@@ -134,14 +134,14 @@ col_count = 4 # 한 에포크당 수집 데이터 수
 num_epochs = 3 # 에포크 ㅅ횟수
 use_gpu = 0 # 사용 GPU 번호 - 오류 잡기 위해 
 # tuple_test
-q1, q2, q3, q4 = "lin96", "lin48", "none", "none"
-a_init , b_init, c_init, d_init = sigmoid_inverse(0.01), sigmoid_inverse(0.01) , -100, -100  # 초기값(sigmoid로변환할  것 감안)  
+q1, q2, q3, q4 = "lin96", "lin24", "none", "none"
+a_init , b_init, c_init, d_init = sigmoid_inverse(0.05), sigmoid_inverse(0.05) , -100, -100  # 초기값(sigmoid로변환할  것 감안)  
 lr = 0.005 #SGD 사용시에는 lr값을 충분히 키워서 쓸 것. Adam일 때는 0.01 정도가 적합
 lr = 0.05
 
 q1, q2, q3, q4 = q1.lower(), q2.lower(), q3.lower(), q4.lower()
 
-for idx in range(4):
+for idx in range(1):
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
     args.gpu = use_gpu
@@ -406,7 +406,7 @@ for idx in range(4):
                 print(f"STEP {i}", combine_model_test.get_result(), f"loss {loss}" )
                 loss_points.append(tup)
                 train_loss_res = vali(dataset_input, dataset_input_loader, criterion)
-                vali_loss = vali(dataset_input_test, dataset_input_val_loader, criterion)
+                vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
                 print("train_loss, vali_loss:", train_loss_res, vali_loss)
                 # scheduler.step(vali_loss)
 

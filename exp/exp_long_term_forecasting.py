@@ -16,6 +16,8 @@ from utils.tools import linear_regression_direct, linear_predict
 
 warnings.filterwarnings('ignore')
 
+SIMPLE_MODELS = {'SparseTSF', 'PITS', 'Linear', 'TD_LTSF_Time'}
+
 
 class Exp_Long_Term_Forecast(Exp_Basic):
     def __init__(self, args):
@@ -61,7 +63,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
+                        if any(substr in self.args.model for substr in SIMPLE_MODELS):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
@@ -69,7 +71,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                             else:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
-                    if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
+                    if any(substr in self.args.model for substr in SIMPLE_MODELS):
                         outputs = self.model(batch_x)
                     else:
                         if self.args.output_attention:
@@ -140,7 +142,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                     # encoder - decoder
                     if self.args.use_amp:
                         with torch.cuda.amp.autocast():
-                            if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
+                            if any(substr in self.args.model for substr in SIMPLE_MODELS):
                                 outputs = self.model(batch_x)
                             else:
                                 if self.args.output_attention:
@@ -154,7 +156,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                             loss = criterion(outputs, batch_y)
                             train_loss.append(loss.item())
                     else:
-                        if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
+                        if any(substr in self.args.model for substr in SIMPLE_MODELS):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
@@ -232,6 +234,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
 
         preds = []
         trues = []
+        inputx = []
         folder_path = './test_results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
@@ -252,7 +255,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
+                        if any(substr in self.args.model for substr in SIMPLE_MODELS):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
@@ -260,7 +263,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                             else:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
-                    if any(substr in self.args.model for substr in {'SparseTSF', 'PITS'}):
+                    if any(substr in self.args.model for substr in SIMPLE_MODELS):
                         outputs = self.model(batch_x)
                     else:
                         if self.args.output_attention:
@@ -286,6 +289,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
 
                 preds.append(pred)
                 trues.append(true)
+                inputx.append(batch_x.detach().cpu().numpy())
                 if i % 20 == 0:
                     input = batch_x.detach().cpu().numpy()
                     if test_data.scale and self.args.inverse:
@@ -297,9 +301,11 @@ class Exp_Long_Term_Forecast(Exp_Basic):
 
         preds = np.concatenate(preds, axis=0)
         trues = np.concatenate(trues, axis=0)
+        inputx = np.concatenate(inputx, axis=0)
         print('test shape:', preds.shape, trues.shape)
         preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
         trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
+        inputx = inputx.reshape(-1, inputx.shape[-2], inputx.shape[-1])
         print('test shape:', preds.shape, trues.shape)
 
         # result save
@@ -337,5 +343,6 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, smae, mae_ratio, corr, slope_ratio, std_ratio]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
+        # np.save(folder_path + 'input.npy', inputx)
 
         return

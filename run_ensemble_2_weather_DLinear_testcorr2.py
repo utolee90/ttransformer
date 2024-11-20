@@ -21,7 +21,7 @@ import random
 from utils.tools import EarlyStopping
 
 from utils.metrics import *
-from utils.tools import get_Xval, res_lin_reg, get_res_lin, zero_model, sigmoid_inverse, sigmoid
+from utils.tools import get_Xval, res_lin_reg, get_res_lin, zero_model, sigmoid_inverse, sigmoid, get_extend_last, get_res_sin
 from data_provider.data_factory import data_provider
 from data_provider.data_loader import Dataset_Custom
 
@@ -39,7 +39,7 @@ np.random.seed(fix_seed)
 
 # 스크립트 단번에 호출하는 방법
 scripts_texts = ""
-script_path = "./scripts/script_ensemble_iTransformer_exchange.sh"
+script_path = "./scripts/script_ensemble_DLinear_weather_noshuffle.sh"
 
 with open(script_path, 'r', encoding='utf8') as W:
     scripts_texts = W.read()
@@ -82,66 +82,24 @@ for c in range(len(script_pairs)):
     
     args_list.append(arg)
 
-scripts_new = """--task_name long_term_forecast \
-  --is_training 0 \
-  --root_path ./dataset/exchange_rate/ \
-  --data_path exchange_rate.csv \
-  --model_id iTransformer_Exchange_96_96 \
-  --model iTransformer \
-  --data custom \
-  --features M \
-  --seq_len 96 \
-  --label_len 48 \
-  --pred_len 96 \
-  --e_layers 2 \
-  --d_layers 1 \
-  --factor 3 \
-  --enc_in 8 \
-  --dec_in 8 \
-  --c_out 8 \
-  --batch_size 8 \
-  --d_model 64 \
-  --d_ff 128 \
-  --des 'Exp' \
-  --itr 1"""
-
-args_list2 = []
-arg = parser.parse_args(scripts_new.split())
-arg.use_gpu = True if torch.cuda.is_available() and arg.use_gpu else False
-
-if arg.use_gpu and arg.use_multi_gpu:
-    arg.devices = arg.devices.replace(' ', '')
-    device_ids = arg.devices.split(',')
-    arg.device_ids = [int(id_) for id_ in device_ids]
-    arg.gpu = arg.device_ids[0]
-
-args_list2.append(arg)
-
-
-exchange_96_96_new = "long_term_forecast_COMPARE_iTransformer_linear_Exchange_96_96_Mod-iTransformer_linear_data-exchange_rate.csv_(96to96)_0(1729900000)"
-
-setting_pairs = [
-    (exchange_96_96_new, args_list2[0])
-]
-
 setting_pairs = [
     (script_pairs[r][1], args_list[r]) for r in range(len(script_pairs))
 ]
 
 
 idx = 0 # 순서
-col_count = 4 # 한 에포크당 수집 데이터 수
+col_count = 3 # 한 에포크당 수집 데이터 수
 num_epochs = 3 # 에포크 ㅅ횟수
 use_gpu = 0 # 사용 GPU 번호 - 오류 잡기 위해 
 # tuple_test
-q1, q2, q3, q4 = "lin96", "lin48", "none", "none"
-a_init , b_init, c_init, d_init = sigmoid_inverse(0.01), sigmoid_inverse(0.01) , -100, -100  # 초기값(sigmoid로변환할  것 감안)  
+q1, q2, q3, q4 = "lin96", "sin", "none", "none"
+a_init , b_init, c_init, d_init = sigmoid_inverse(0.005), sigmoid_inverse(0.005) , -100, -100  # 초기값(sigmoid로변환할  것 감안)  
 lr = 0.005 #SGD 사용시에는 lr값을 충분히 키워서 쓸 것. Adam일 때는 0.01 정도가 적합
 lr = 0.05
 
 q1, q2, q3, q4 = q1.lower(), q2.lower(), q3.lower(), q4.lower()
 
-for idx in range(4):
+for idx in range(1):
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
     args.gpu = use_gpu
@@ -280,6 +238,8 @@ for idx in range(4):
     
     QMAP_FN = {
       "none": None,
+      "const": get_extend_last(args.pred_len), 
+      "sin": get_res_sin(args.seq_len, args.pred_len, 144)
     }
 
     QMAP_FN_NUMS = [6, 12] + [k*24 for k in range(1, args.pred_len//24 + 1)]
@@ -344,8 +304,8 @@ for idx in range(4):
     torch.nn.utils.clip_grad_norm_(combine_model_test.parameters(), max_norm=1) # gradient clipping - 크기 제한
     
     criterion = nn.MSELoss()
-    # optimizer = torch.optim.Adam([combine_model_test.a,combine_model_test.b], lr=lr, weight_decay=1e-3)
-    optimizer = torch.optim.SGD([combine_model_test.a,combine_model_test.b], lr=lr, momentum=0.96)
+    optimizer = torch.optim.SGD(combine_model_test.parameters(), lr=lr, momentum=0.98)
+    # optimizer = torch.optim.Adam(combine_model_test.parameters(), lr = lr, weight_decay=1e-3)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
 
     # 직접 메트릭 계산
@@ -375,7 +335,7 @@ for idx in range(4):
     
     loss_points = [] # (a, b)
     # input_len = int(np.ceil(len(dataset_input) / args.batch_size) )
-    input_len_div = int(np.ceil(input_len / (col_count - 1)))
+    input_len_div = int(np.ceil(input_len_te / (col_count - 1)))
     
     print("INPUT_LEN", input_len, input_len_div)
     # early_stopping = EarlyStopping(patience=2, verbose=True)
@@ -388,7 +348,7 @@ for idx in range(4):
         path = os.path.join(args.checkpoints, setting_path)
         if not os.path.exists(path):
             os.makedirs(path)
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataset_input_loader):
+        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataset_input_test_loader):
             cnt += 1
             batch_x = batch_x.float().to(device)
             batch_y = batch_y.float().to(device)
@@ -405,8 +365,8 @@ for idx in range(4):
                 tup = combine_model_test.get_result()
                 print(f"STEP {i}", combine_model_test.get_result(), f"loss {loss}" )
                 loss_points.append(tup)
-                train_loss_res = vali(dataset_input, dataset_input_loader, criterion)
-                vali_loss = vali(dataset_input_test, dataset_input_val_loader, criterion)
+                train_loss_res = vali(dataset_input, dataset_input_test_loader, criterion)
+                vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
                 print("train_loss, vali_loss:", train_loss_res, vali_loss)
                 # scheduler.step(vali_loss)
 
@@ -416,7 +376,7 @@ for idx in range(4):
         train_loss = [v.item() for v in train_loss]
         train_loss = np.average(train_loss)
         vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
-        # print("vali_loss:", vali_loss)
+        print("vali_loss:", vali_loss)
         # print()
         print(tup)
         # early_stopping(vali_loss, combine_model_test, path)
@@ -523,7 +483,7 @@ for idx in range(4):
     tup = new_loss_points_map[0]["tup"]
     
     # 메트릭 비교하기 (원본 iTransformer)
-    with open(f'run_ensenble_txt_{setting_path}_{q1}_{q2}_{time.time()}.txt', 'w', encoding='utf8') as A:
+    with open(f'run_ensenble_txt_{setting_path}_{q1}_{q2}_{time.time()}_s.txt', 'w', encoding='utf8') as A:
         wr = "TRAIN_PRED\n"
         wr += f"{MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)} \n"
         wr += "TRAIN_ENSEMBLE_PRED\n"
@@ -540,9 +500,9 @@ for idx in range(4):
     # 메트릭 저장
     metric_path = f"./results/{setting_path}/"
     metric_ensemble = [MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), REC_CORR(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)]
-    np.save(metric_path + "metrics_ensemble.npy", metric_ensemble)
-    np.save(metric_path + "pred_ensemble.npy", final_res)
-    np.save(metric_path + "coef_col.npy", loss_points)
+    np.save(metric_path + "metrics_ensemble_s.npy", metric_ensemble)
+    np.save(metric_path + "pred_ensemble_s.npy", final_res)
+    np.save(metric_path + "coef_col_s.npy", loss_points)
 
     # loss_points_map 저장 전 res_temp 키 지우기
     for r in range(len(loss_points_map)):
@@ -572,7 +532,7 @@ for idx in range(4):
         lin_val = np.concatenate([input_val_lin, lin_val])
         lin_val2 = np.concatenate([input_val_lin2, lin_val2])
         final_val = np.concatenate([input_val, final_val])
-        file_nm = f"combi_{idx}.pdf"
+        file_nm = f"combi_{idx}_s.pdf"
         plt.figure(figsize=(8,7))
         plt.plot(x_concat, true_val, 'g-', label="GroundTruth", linewidth=2)
         plt.plot(x_concat, pred_val, 'b-', label="Prediction_Basic", linewidth=2)

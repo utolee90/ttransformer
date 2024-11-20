@@ -39,7 +39,7 @@ np.random.seed(fix_seed)
 
 # 스크립트 단번에 호출하는 방법
 scripts_texts = ""
-script_path = "./scripts/script_ensemble_iTransformer_exchange.sh"
+script_path = "./scripts/script_ensemble_DLinear_exchange_noshuffle.sh"
 
 with open(script_path, 'r', encoding='utf8') as W:
     scripts_texts = W.read()
@@ -82,47 +82,6 @@ for c in range(len(script_pairs)):
     
     args_list.append(arg)
 
-scripts_new = """--task_name long_term_forecast \
-  --is_training 0 \
-  --root_path ./dataset/exchange_rate/ \
-  --data_path exchange_rate.csv \
-  --model_id iTransformer_Exchange_96_96 \
-  --model iTransformer \
-  --data custom \
-  --features M \
-  --seq_len 96 \
-  --label_len 48 \
-  --pred_len 96 \
-  --e_layers 2 \
-  --d_layers 1 \
-  --factor 3 \
-  --enc_in 8 \
-  --dec_in 8 \
-  --c_out 8 \
-  --batch_size 8 \
-  --d_model 64 \
-  --d_ff 128 \
-  --des 'Exp' \
-  --itr 1"""
-
-args_list2 = []
-arg = parser.parse_args(scripts_new.split())
-arg.use_gpu = True if torch.cuda.is_available() and arg.use_gpu else False
-
-if arg.use_gpu and arg.use_multi_gpu:
-    arg.devices = arg.devices.replace(' ', '')
-    device_ids = arg.devices.split(',')
-    arg.device_ids = [int(id_) for id_ in device_ids]
-    arg.gpu = arg.device_ids[0]
-
-args_list2.append(arg)
-
-
-exchange_96_96_new = "long_term_forecast_COMPARE_iTransformer_linear_Exchange_96_96_Mod-iTransformer_linear_data-exchange_rate.csv_(96to96)_0(1729900000)"
-
-setting_pairs = [
-    (exchange_96_96_new, args_list2[0])
-]
 
 setting_pairs = [
     (script_pairs[r][1], args_list[r]) for r in range(len(script_pairs))
@@ -134,14 +93,14 @@ col_count = 4 # 한 에포크당 수집 데이터 수
 num_epochs = 3 # 에포크 ㅅ횟수
 use_gpu = 0 # 사용 GPU 번호 - 오류 잡기 위해 
 # tuple_test
-q1, q2, q3, q4 = "lin96", "lin48", "none", "none"
-a_init , b_init, c_init, d_init = sigmoid_inverse(0.01), sigmoid_inverse(0.01) , -100, -100  # 초기값(sigmoid로변환할  것 감안)  
+q1, q2, q3, q4 = "lin24", "lin96", "none", "none"
+a_init , b_init, c_init, d_init = sigmoid_inverse(0.05), sigmoid_inverse(0.05) , -100, -100  # 초기값(sigmoid로변환할  것 감안)  
 lr = 0.005 #SGD 사용시에는 lr값을 충분히 키워서 쓸 것. Adam일 때는 0.01 정도가 적합
 lr = 0.05
 
 q1, q2, q3, q4 = q1.lower(), q2.lower(), q3.lower(), q4.lower()
 
-for idx in range(4):
+for idx in range(1):
     setting_path = setting_pairs[idx][0]
     args = setting_pairs[idx][1]
     args.gpu = use_gpu
@@ -406,7 +365,7 @@ for idx in range(4):
                 print(f"STEP {i}", combine_model_test.get_result(), f"loss {loss}" )
                 loss_points.append(tup)
                 train_loss_res = vali(dataset_input, dataset_input_loader, criterion)
-                vali_loss = vali(dataset_input_test, dataset_input_val_loader, criterion)
+                vali_loss = vali(dataset_input_test, dataset_input_test_loader, criterion)
                 print("train_loss, vali_loss:", train_loss_res, vali_loss)
                 # scheduler.step(vali_loss)
 
@@ -540,15 +499,15 @@ for idx in range(4):
     # 메트릭 저장
     metric_path = f"./results/{setting_path}/"
     metric_ensemble = [MSE(np_pred, np_true), MAE(np_pred, np_true), SMAE(np_pred, np_true), REC_CORR(np_pred, np_true), STD_RATIO(np_pred, np_true), SLOPE_RATIO(np_pred, np_true)]
-    np.save(metric_path + "metrics_ensemble.npy", metric_ensemble)
-    np.save(metric_path + "pred_ensemble.npy", final_res)
-    np.save(metric_path + "coef_col.npy", loss_points)
+    np.save(metric_path + "metrics_ensemble2.npy", metric_ensemble)
+    np.save(metric_path + "pred_ensemble2.npy", final_res)
+    np.save(metric_path + "coef_col2.npy", loss_points)
 
     # loss_points_map 저장 전 res_temp 키 지우기
     for r in range(len(loss_points_map)):
         del loss_points_map[r]["res_temp"]
     
-    np.save(metric_path + "coef_metric.npy", loss_points_map)
+    np.save(metric_path + "coef_metric2.npy", loss_points_map)
 
     # 그래픽 표현
     graphic_path = f"./test_results/{setting_path}/"
@@ -572,7 +531,7 @@ for idx in range(4):
         lin_val = np.concatenate([input_val_lin, lin_val])
         lin_val2 = np.concatenate([input_val_lin2, lin_val2])
         final_val = np.concatenate([input_val, final_val])
-        file_nm = f"combi_{idx}.pdf"
+        file_nm = f"combi_{idx}_2.pdf"
         plt.figure(figsize=(8,7))
         plt.plot(x_concat, true_val, 'g-', label="GroundTruth", linewidth=2)
         plt.plot(x_concat, pred_val, 'b-', label="Prediction_Basic", linewidth=2)
